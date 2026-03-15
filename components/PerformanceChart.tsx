@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchTrades } from "@/lib/supabase/trades";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
 import { loadTrades, loadOpenTrades, type Trade, type OpenTrade } from "@/lib/journal";
+import { logError } from "@/lib/log-error";
 
 type Timeframe = "days" | "weeks" | "months" | "quarters" | "years";
 
@@ -150,8 +151,8 @@ export default function PerformanceChart() {
 
   const load = useCallback(() => {
     if (supabase && user) {
-      fetchTrades(supabase).then(setClosedTrades).catch(console.error);
-      fetchOpenTrades(supabase).then(setOpenTrades).catch(console.error);
+      fetchTrades(supabase).then(setClosedTrades).catch(logError);
+      fetchOpenTrades(supabase).then(setOpenTrades).catch(logError);
     } else {
       setClosedTrades(loadTrades(user?.id));
       setOpenTrades(loadOpenTrades(user?.id));
@@ -220,7 +221,7 @@ export default function PerformanceChart() {
             <div key={d.label + i} className="flex flex-1 flex-col items-center gap-0.5" title={`${d.label}: ${d.wins}W / ${d.losses}L${d.breakeven ? ` / ${d.breakeven}BE` : ""}${d.openCount ? ` · ${d.openCount} open` : ""}`}>
               <div className="flex w-full max-w-[24px] flex-1 flex-col justify-end rounded-t bg-slate-900/80">
                 <div
-                  className="w-full rounded-t bg-emerald-400"
+                  className="w-full rounded-t bg-sky-400"
                   style={{ height: `${winH}%`, minHeight: winH > 0 ? "4px" : 0 }}
                 />
                 <div
@@ -242,7 +243,7 @@ export default function PerformanceChart() {
 
       <div className="mt-3 flex flex-wrap items-center justify-end gap-4 text-[10px] text-zinc-400">
         <div className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          <span className="h-2 w-2 rounded-full bg-sky-400" />
           <span>Wins</span>
         </div>
         <div className="flex items-center gap-1">

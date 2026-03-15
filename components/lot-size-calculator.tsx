@@ -139,7 +139,7 @@ export default function LotSizeCalculator() {
             <button
               type="button"
               onClick={toggleRiskInputMode}
-              className="rounded-lg border border-white/20 px-2 py-1 text-xs font-medium text-zinc-300 hover:border-emerald-400/50 hover:text-emerald-300"
+              className="rounded-lg border border-white/20 px-2 py-1 text-xs font-medium text-zinc-300 hover:border-sky-400/50 hover:text-sky-300"
             >
               Use {riskInputMode === "percent" ? "amount" : "%"}
             </button>
@@ -202,7 +202,7 @@ export default function LotSizeCalculator() {
 
         <div className="rounded-xl bg-zinc-800 p-4">
           <p className="text-sm text-zinc-400">Suggested lot size</p>
-          <p className="text-2xl font-bold text-emerald-400">{lotSize}</p>
+          <p className="text-2xl font-bold text-sky-400">{lotSize}</p>
         </div>
       </div>
 
@@ -210,7 +210,7 @@ export default function LotSizeCalculator() {
         <button
           type="button"
           onClick={handleReset}
-          className="rounded-xl border border-white/20 px-4 py-2 text-sm font-medium text-zinc-200 hover:border-emerald-400/60 hover:text-emerald-300"
+          className="rounded-xl border border-white/20 px-4 py-2 text-sm font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
         >
           Reset
         </button>

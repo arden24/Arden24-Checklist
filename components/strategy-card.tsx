@@ -63,7 +63,7 @@ export default function StrategyCard({
                   className="flex items-center justify-between gap-2 rounded-lg bg-zinc-800/60 px-3 py-2"
                 >
                   <div className="flex flex-1 items-start gap-2">
-                    <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-400" />
+                    <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-400" />
                     <span>{item.text}</span>
                   </div>
                   {item.timeframe && (
@@ -83,7 +83,7 @@ export default function StrategyCard({
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-lg border border-white/15 px-3 py-1.5 font-medium text-zinc-200 hover:border-emerald-400/60 hover:text-emerald-300"
+              className="rounded-lg border border-white/15 px-3 py-1.5 font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
             >
               Edit
             </button>

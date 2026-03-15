@@ -7,6 +7,7 @@ import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
 import { insertStrategy } from "@/lib/supabase/strategies";
 import type { ChecklistItem, Strategy } from "@/lib/supabase/strategies";
+import { logError } from "@/lib/log-error";
 
 function loadStrategies(key: string): Strategy[] {
   if (typeof window === "undefined") return [];
@@ -128,7 +129,7 @@ export default function StrategyForm() {
 
       router.push("/strategies");
     } catch (err) {
-      console.error(err);
+      logError(err);
       alert("Failed to save strategy. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -214,7 +215,7 @@ export default function StrategyForm() {
           <button
             type="button"
             onClick={addChecklistItem}
-            className="rounded-full border border-emerald-500/60 px-3 py-1 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10"
+            className="rounded-full border border-sky-500/60 px-3 py-1 text-xs font-semibold text-sky-400 hover:bg-sky-500/10"
           >
             + Add item
           </button>
@@ -250,7 +251,7 @@ export default function StrategyForm() {
 
               <div className="flex items-center justify-between gap-3">
                 <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                  <span className="rounded-lg border border-emerald-500/60 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-300">
+                  <span className="rounded-lg border border-sky-500/60 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300">
                     {item.image ? "Change screenshot" : "Add screenshot"}
                   </span>
                   <input
@@ -279,7 +280,7 @@ export default function StrategyForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-black disabled:opacity-70"
+          className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black disabled:opacity-70"
         >
           {isSubmitting ? "Saving strategy..." : "Save strategy"}
         </button>

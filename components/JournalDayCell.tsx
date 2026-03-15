@@ -26,14 +26,14 @@ export default function JournalDayCell({
   const isEmpty = day === null;
   const bgClass =
     pnl !== null && pnl > 0
-      ? "bg-emerald-500/20 border-emerald-400/30"
+      ? "bg-sky-500/20 border-sky-400/30"
       : pnl !== null && pnl < 0
       ? "bg-red-500/20 border-red-400/30"
       : "bg-slate-800/40 border-white/5";
 
   const textMuted = !isCurrentMonth ? "text-zinc-500" : "text-zinc-200";
   const borderGlow = isSelected
-    ? "ring-2 ring-emerald-400/60 shadow-[0_0_12px_rgba(52,211,153,0.15)]"
+    ? "ring-2 ring-sky-400/60 shadow-[0_0_12px_rgba(52,211,153,0.15)]"
     : "";
 
   if (isEmpty) {
@@ -54,7 +54,7 @@ export default function JournalDayCell({
       <div className="flex flex-col gap-0.5 p-2">
         <span
           className={`text-sm font-semibold ${
-            isToday ? "rounded-full bg-emerald-500/30 px-1.5 text-emerald-200" : ""
+            isToday ? "rounded-full bg-sky-500/30 px-1.5 text-sky-200" : ""
           }`}
         >
           {day}
@@ -63,7 +63,7 @@ export default function JournalDayCell({
           <span
             className={`text-xs font-medium ${
               pnl > 0
-                ? "text-emerald-400"
+                ? "text-sky-400"
                 : pnl < 0
                 ? "text-red-400"
                 : "text-zinc-400"

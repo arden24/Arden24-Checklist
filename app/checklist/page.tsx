@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
 import { fetchStrategies, type Strategy, type ChecklistItem } from "@/lib/supabase/strategies";
+import { logError } from "@/lib/log-error";
 
 export default function ChecklistPage() {
   const { user } = useAuth();
@@ -25,7 +26,7 @@ export default function ChecklistPage() {
             setChecked(new Array(list[0].checklist.length).fill(false));
           }
         })
-        .catch(console.error);
+        .catch(logError);
     } else if (typeof window !== "undefined") {
       try {
         const raw = window.localStorage.getItem(strategiesKey);
@@ -98,13 +99,13 @@ export default function ChecklistPage() {
               <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
                 Confluence
               </p>
-              <p className="text-2xl font-semibold text-emerald-400">
+              <p className="text-2xl font-semibold text-sky-400">
                 {confluence}%
               </p>
             </div>
             <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-900">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-400"
+                className="h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-sky-400"
                 style={{ width: `${confluence}%` }}
               />
             </div>
@@ -122,7 +123,7 @@ export default function ChecklistPage() {
             </p>
             <a
               href="/strategies/new"
-              className="mt-4 inline-flex items-center rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-black"
+              className="mt-4 inline-flex items-center rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-black"
             >
               Create a strategy
             </a>
@@ -196,7 +197,7 @@ export default function ChecklistPage() {
                         type="checkbox"
                         checked={checked[index] ?? false}
                         onChange={() => toggleItem(index)}
-                        className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-slate-950 text-emerald-500 focus:ring-0"
+                        className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-slate-950 text-sky-500 focus:ring-0"
                       />
                       <div className="flex flex-1 flex-col gap-2">
                         <div className="flex flex-col gap-1">
@@ -242,7 +243,7 @@ export default function ChecklistPage() {
                   </div>
                   <p className="text-xs text-zinc-500">
                     Confluence:{" "}
-                    <span className="font-semibold text-emerald-400">
+                    <span className="font-semibold text-sky-400">
                       {confluence}%
                     </span>
                   </p>

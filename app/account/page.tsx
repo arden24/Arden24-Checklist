@@ -30,16 +30,15 @@ export default function AccountPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/dashboard"
-              className="rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm font-medium text-zinc-200 hover:border-emerald-400/60 hover:text-emerald-300"
+              className="rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
             >
               Back to Dashboard
             </Link>
           </div>
         </div>
 
-        <p className="text-xs text-zinc-500">
-          This app is designed for trading discipline, journaling and self-review.
-          It does not provide financial advice.
+        <p className="text-xs text-gray-400">
+          Arden24 is a product of Arden Ventures Ltd. For journaling, discipline and self-review only. Not financial advice.
         </p>
       </div>
     </main>

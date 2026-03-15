@@ -19,7 +19,7 @@ export default function SummaryCard({ title, value, subtitle }: SummaryCardProps
         )}
       </div>
 
-      <div className="mt-4 h-8 w-full rounded-full bg-gradient-to-r from-emerald-500/20 via-sky-500/10 to-emerald-400/30">
+      <div className="mt-4 h-8 w-full rounded-full bg-gradient-to-r from-sky-500/20 via-sky-500/10 to-sky-400/30">
         <div className="h-full w-full rounded-full bg-[radial-gradient(circle_at_0_100%,rgba(16,185,129,0.6),transparent_60%),radial-gradient(circle_at_40%_0,rgba(56,189,248,0.4),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(52,211,153,0.7),transparent_55%)] opacity-80" />
       </div>
     </div>

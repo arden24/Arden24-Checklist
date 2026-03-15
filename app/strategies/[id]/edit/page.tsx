@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
+import { logError } from "@/lib/log-error";
 import {
   fetchStrategyById,
   updateStrategy,
@@ -61,7 +62,7 @@ export default function EditStrategyPage() {
             setChecklistItems(normaliseChecklist(s.checklist));
           }
         })
-        .catch(console.error)
+        .catch(logError)
         .finally(() => setLoading(false));
     } else if (typeof window !== "undefined") {
       try {
@@ -174,7 +175,7 @@ export default function EditStrategyPage() {
 
       router.push("/strategies");
     } catch (err) {
-      console.error(err);
+      logError(err);
       alert("Failed to save strategy. Please try again.");
     } finally {
       setIsSaving(false);
@@ -290,7 +291,7 @@ export default function EditStrategyPage() {
               <button
                 type="button"
                 onClick={addChecklistItem}
-                className="rounded-full border border-emerald-500/60 px-3 py-1 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10"
+                className="rounded-full border border-sky-500/60 px-3 py-1 text-xs font-semibold text-sky-400 hover:bg-sky-500/10"
               >
                 + Add item
               </button>
@@ -328,7 +329,7 @@ export default function EditStrategyPage() {
 
                   <div className="flex items-center justify-between gap-3">
                     <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                      <span className="rounded-lg border border-emerald-500/60 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-300">
+                      <span className="rounded-lg border border-sky-500/60 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300">
                         {item.image ? "Change screenshot" : "Add screenshot"}
                       </span>
                       <input
@@ -353,7 +354,7 @@ export default function EditStrategyPage() {
             <button
               type="submit"
               disabled={isSaving}
-              className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-black disabled:opacity-70"
+              className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black disabled:opacity-70"
             >
               {isSaving ? "Saving..." : "Save changes"}
             </button>

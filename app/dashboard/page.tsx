@@ -9,6 +9,7 @@ import JournalList from "@/components/JournalList";
 import PerformanceChart from "@/components/PerformanceChart";
 import StrategyChecklist from "@/components/StrategyChecklist";
 import ImageUploader from "@/components/ImageUploader";
+import PerformanceInsights from "@/components/PerformanceInsights";
 import { useAuth } from "@/contexts/AuthContext";
 import { loadTrades } from "@/lib/journal";
 import { getStrategiesKey, getBestStrategyImageKey, getTradesKey, getOpenTradesKey } from "@/lib/storage-keys";
@@ -18,6 +19,7 @@ import { fetchTrades } from "@/lib/supabase/trades";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
 import type { Trade } from "@/lib/supabase/trades";
 import { loadOpenTrades } from "@/lib/journal";
+import { logError } from "@/lib/log-error";
 
 const MONTH_ABBREV = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -93,8 +95,8 @@ export default function DashboardPage() {
 
   const loadTradesData = useCallback(() => {
     if (supabase && user) {
-      fetchTrades(supabase).then(setClosedTrades).catch(console.error);
-      fetchOpenTrades(supabase).then((list) => setOpenTradesCount(list.length)).catch(console.error);
+      fetchTrades(supabase).then(setClosedTrades).catch(logError);
+      fetchOpenTrades(supabase).then((list) => setOpenTradesCount(list.length)).catch(logError);
     } else {
       setClosedTrades(loadTrades(user?.id) as Trade[]);
       setOpenTradesCount(loadOpenTrades(user?.id).length);
@@ -107,7 +109,7 @@ export default function DashboardPage() {
 
   const loadStrategies = useCallback(() => {
     if (supabase && user) {
-      fetchStrategies(supabase).then(setStrategies).catch(console.error);
+      fetchStrategies(supabase).then(setStrategies).catch(logError);
     } else if (typeof window !== "undefined") {
       const key = getStrategiesKey(user?.id);
       try {
@@ -168,7 +170,7 @@ export default function DashboardPage() {
       alert("All data has been reset. Your account is back to zero. The page will reload.");
       window.location.reload();
     } catch (err) {
-      console.error(err);
+      logError(err);
       alert("Something went wrong while resetting. Please try again.");
     } finally {
       setIsResetting(false);
@@ -222,6 +224,7 @@ export default function DashboardPage() {
                 Choose section
               </option>
               <option value="dashboard-summary">Stats</option>
+              <option value="dashboard-insights">Performance Insights</option>
               <option value="dashboard-trades">Recent trades</option>
               <option value="dashboard-performance">Performance</option>
               <option value="dashboard-calculator">Risk calculator</option>
@@ -233,7 +236,7 @@ export default function DashboardPage() {
         <section id="dashboard-summary">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <SummaryCard title="Total Trades" value={String(stats.total)} subtitle="Closed trades" />
-            <SummaryCard title="Open Trades" value={String(stats.openTradesCount)} subtitle="Currently open positions" />
+            <SummaryCard title="Live Trades" value={String(stats.openTradesCount)} subtitle="Currently open positions" />
             <SummaryCard title="Net P/L" value={stats.netPnlStr} subtitle="Total from closed trades" />
             <SummaryCard title="Win Rate" value={`${stats.winRate}%`} subtitle="Profitable closed trades" />
           </div>
@@ -250,8 +253,8 @@ export default function DashboardPage() {
             />
             <SummaryCard
               title="Best Traded Asset"
-              value={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "—"}
-              subtitle={stats.bestTradedAsset ? stats.bestTradedAsset.name : "No data yet"}
+              value={stats.bestTradedAsset ? stats.bestTradedAsset.name : "—"}
+              subtitle={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "No data yet"}
             />
             <SummaryCard
               title="Most Traded Market"
@@ -263,20 +266,6 @@ export default function DashboardPage() {
 
         <section id="dashboard-trades" className="space-y-4">
           <JournalList />
-        </section>
-
-        <section id="dashboard-performance" className="space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-white">Performance</h2>
-              <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-                Overview
-              </span>
-            </div>
-            <div className="mt-4 min-h-[280px]">
-              <PerformanceChart />
-            </div>
-          </div>
         </section>
 
         <section id="dashboard-calculator" className="grid gap-6 md:grid-cols-1">
@@ -293,14 +282,28 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        <section id="dashboard-performance" className="space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-white">Performance</h2>
+              <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                Overview
+              </span>
+            </div>
+            <div className="mt-4 min-h-[280px]">
+              <PerformanceChart />
+            </div>
+          </div>
+        </section>
+
         <section
           id="dashboard-strategies"
           className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_minmax(0,0.9fr)]"
         >
-          <div className="space-y-4 rounded-2xl border border-emerald-500/30 bg-slate-950/70 p-4">
+          <div className="space-y-4 rounded-2xl border border-sky-500/30 bg-slate-950/70 p-4">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-white">Best Strategy</h2>
-              <span className="text-[10px] uppercase tracking-[0.16em] text-emerald-400">
+              <span className="text-[10px] uppercase tracking-[0.16em] text-sky-400">
                 Focus
               </span>
             </div>
@@ -318,7 +321,7 @@ export default function DashboardPage() {
               <h2 className="text-sm font-semibold text-white">Current Strategy</h2>
               <Link
                 href="/strategies"
-                className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300"
+                className="text-[11px] font-medium text-sky-400 hover:text-sky-300"
               >
                 Open builder
               </Link>
@@ -334,7 +337,7 @@ export default function DashboardPage() {
                   <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
                     Win Rate
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-emerald-400">0%</p>
+                  <p className="mt-1 text-sm font-semibold text-sky-400">0%</p>
                 </div>
                 <div className="rounded-lg bg-slate-950/80 p-2">
                   <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
@@ -358,7 +361,7 @@ export default function DashboardPage() {
               </p>
               <Link
                 href="/strategies/new"
-                className="inline-flex text-[11px] font-medium text-emerald-400 hover:text-emerald-300"
+                className="inline-flex text-[11px] font-medium text-sky-400 hover:text-sky-300"
               >
                 Create new strategy →
               </Link>
@@ -376,7 +379,7 @@ export default function DashboardPage() {
                   {strategies.length > 2 && (
                     <Link
                       href="/strategies"
-                      className="block text-[11px] font-medium text-emerald-400 hover:text-emerald-300"
+                      className="block text-[11px] font-medium text-sky-400 hover:text-sky-300"
                     >
                       View all {strategies.length} strategies →
                     </Link>
@@ -413,7 +416,7 @@ export default function DashboardPage() {
 
         <p className="pt-2 text-[11px] text-zinc-500">
           This app is designed for trading discipline, journaling and
-          self-review. It does not provide financial advice.
+          self-review. Arden24 is a product of Arden Ventures Ltd. Not financial advice.
         </p>
       </div>
     </main>

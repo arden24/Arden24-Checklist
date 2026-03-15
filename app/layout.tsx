@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trade Checklist",
-  description: "Trading journal, discipline and strategy checklist app.",
+  title: "Arden24",
+  description: "Trading journal, discipline and strategy checklist. A product of Arden Ventures Ltd.",
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="min-h-screen bg-slate-950 text-white">
+        <div className="min-h-screen bg-black text-white">
           <AuthProvider>
             <Navbar />
             {children}

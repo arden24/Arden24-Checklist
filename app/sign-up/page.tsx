@@ -77,9 +77,9 @@ export default function SignUpPage() {
   if (success === "confirm_email") {
     return (
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col justify-center px-4 py-12">
-        <div className="rounded-2xl border border-emerald-500/20 bg-slate-900/80 p-6 shadow-lg">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20">
-            <svg className="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        <div className="rounded-2xl border border-sky-500/20 bg-slate-900/80 p-6 shadow-lg">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sky-500/20">
+            <svg className="h-6 w-6 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
@@ -89,13 +89,13 @@ export default function SignUpPage() {
           </p>
           <Link
             href="/sign-in"
-            className="block w-full rounded-xl bg-emerald-600 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-emerald-500"
+            className="block w-full rounded-xl bg-sky-600 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-sky-500"
           >
             Go to sign in
           </Link>
           <p className="mt-4 text-center text-xs text-zinc-500">
             Didn&apos;t get the email? Check spam or{" "}
-            <button type="button" onClick={() => setSuccess(null)} className="font-medium text-emerald-400 hover:text-emerald-300">
+            <button type="button" onClick={() => setSuccess(null)} className="font-medium text-sky-400 hover:text-sky-300">
               try again
             </button>
           </p>
@@ -144,7 +144,7 @@ export default function SignUpPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              className="rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+              className="rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30"
               placeholder="you@example.com"
             />
           </label>
@@ -158,7 +158,7 @@ export default function SignUpPage() {
               required
               minLength={6}
               autoComplete="new-password"
-              className="rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-sm text-white outline-none transition focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30"
+              className="rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30"
               placeholder="••••••••"
             />
             <span className="text-xs text-zinc-500">At least 6 characters</span>
@@ -167,7 +167,7 @@ export default function SignUpPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:opacity-50"
+            className="w-full rounded-xl bg-sky-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-sky-500 disabled:opacity-50"
           >
             {loading ? "Creating account…" : "Sign up"}
           </button>
@@ -177,7 +177,7 @@ export default function SignUpPage() {
           Already have an account?{" "}
           <Link
             href="/sign-in"
-            className="font-medium text-emerald-400 hover:text-emerald-300"
+            className="font-medium text-sky-400 hover:text-sky-300"
           >
             Sign in
           </Link>

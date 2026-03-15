@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchTrades } from "@/lib/supabase/trades";
 import { getTradesForJournal, type Trade } from "@/lib/journal";
+import { logError } from "@/lib/log-error";
 import JournalCalendar from "@/components/JournalCalendar";
 import JournalDayDetail from "@/components/JournalDayDetail";
 
@@ -34,7 +35,7 @@ export default function JournalPage() {
 
   const load = useCallback(() => {
     if (supabase && user) {
-      fetchTrades(supabase).then(setTrades).catch(console.error);
+      fetchTrades(supabase).then(setTrades).catch(logError);
     } else {
       setTrades(getTradesForJournal(user?.id));
     }
@@ -101,21 +102,21 @@ export default function JournalPage() {
               <button
                 type="button"
                 onClick={goPrevMonth}
-                className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:border-emerald-400/40 hover:text-emerald-300"
+                className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:border-sky-400/40 hover:text-sky-300"
               >
                 ← Prev
               </button>
               <button
                 type="button"
                 onClick={goNextMonth}
-                className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:border-emerald-400/40 hover:text-emerald-300"
+                className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:border-sky-400/40 hover:text-sky-300"
               >
                 Next →
               </button>
               <button
                 type="button"
                 onClick={goToday}
-                className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20"
+                className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-sm font-medium text-sky-300 hover:bg-sky-500/20"
               >
                 Today
               </button>
@@ -128,7 +129,7 @@ export default function JournalPage() {
               <p
                 className={`text-lg font-semibold ${
                   monthlyStats.pnl > 0
-                    ? "text-emerald-400"
+                    ? "text-sky-400"
                     : monthlyStats.pnl < 0
                     ? "text-red-400"
                     : "text-zinc-300"
@@ -139,7 +140,7 @@ export default function JournalPage() {
             </div>
             <div className="rounded-xl border border-white/10 bg-slate-900/80 p-3">
               <p className="text-xs text-zinc-500">Wins</p>
-              <p className="text-lg font-semibold text-emerald-400">
+              <p className="text-lg font-semibold text-sky-400">
                 {monthlyStats.wins}
               </p>
             </div>

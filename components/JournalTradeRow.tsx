@@ -18,7 +18,7 @@ export default function JournalTradeRow({ trade }: JournalTradeRowProps) {
   const isBreakeven = trade.pnl === 0;
 
   const pnlColor = isWin
-    ? "text-emerald-400"
+    ? "text-sky-400"
     : isLoss
     ? "text-red-400"
     : "text-zinc-400";
@@ -45,7 +45,7 @@ export default function JournalTradeRow({ trade }: JournalTradeRowProps) {
               <span
                 className={
                   trade.direction === "Buy"
-                    ? "text-emerald-400/90"
+                    ? "text-sky-400/90"
                     : "text-red-400/90"
                 }
               >

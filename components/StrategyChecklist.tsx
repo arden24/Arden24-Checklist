@@ -22,7 +22,7 @@ export default function StrategyChecklist({
           >
             <input
               type="checkbox"
-              className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-slate-950 text-emerald-500 focus:ring-0"
+              className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-slate-950 text-sky-500 focus:ring-0"
             />
             <span>{item}</span>
           </label>

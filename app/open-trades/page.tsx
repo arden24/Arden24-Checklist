@@ -10,6 +10,7 @@ import {
   removeOpenTrade,
   type OpenTrade,
 } from "@/lib/journal";
+import { logError } from "@/lib/log-error";
 
 function formatDate(key: string): string {
   const [y, m, d] = key.split("-");
@@ -63,7 +64,7 @@ export default function OpenTradesPage() {
 
   const loadOpenTradesList = useCallback(() => {
     if (supabase && user) {
-      fetchOpenTrades(supabase).then(setOpenTrades).catch(console.error);
+      fetchOpenTrades(supabase).then(setOpenTrades).catch(logError);
     } else {
       setOpenTrades(loadOpenTrades(user?.id));
     }
@@ -98,7 +99,7 @@ export default function OpenTradesPage() {
       loadOpenTradesList();
       setCloseForm(initialCloseState);
     } catch (err) {
-      console.error(err);
+      logError(err);
       alert("Failed to save trade. Please try again.");
     }
   };
@@ -118,7 +119,7 @@ export default function OpenTradesPage() {
         setOpenTrades(loadOpenTrades(user?.id));
       }
     } catch (err) {
-      console.error(err);
+      logError(err);
       alert("Failed to remove open trade. Please try again.");
     }
   };
@@ -127,16 +128,15 @@ export default function OpenTradesPage() {
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
       <div className="mx-auto max-w-4xl space-y-6">
         <header>
-          <h1 className="text-3xl font-bold">Open Trades</h1>
+          <h1 className="text-3xl font-bold">Live Trades</h1>
           <p className="mt-2 text-sm text-zinc-400">
-            When a trade is closed, journal the outcome here. It will appear on
-            the Dashboard and in the Journal.
+            When a trade is closed, journal the outcome here. It will appear on the Dashboard and in the Journal.
           </p>
         </header>
 
         {openTrades.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/50 p-8 text-center text-sm text-zinc-400">
-            <p className="font-medium text-zinc-200">No open trades</p>
+            <p className="font-medium text-zinc-200">No live trades</p>
             <p className="mt-2">
               Log a trade from the Dashboard or Checklist to see it here. Then
               journal how it ended when you close it.
@@ -162,7 +162,7 @@ export default function OpenTradesPage() {
                       <p className="mt-1 text-xs text-zinc-500">
                         Entry {open.entryPrice ?? "—"} · SL {open.stopLoss ?? "—"} · TP {open.takeProfit ?? "—"}
                         {openTradeRR(open) && (
-                          <span className="ml-2 text-emerald-400">R:R {openTradeRR(open)}</span>
+                          <span className="ml-2 text-sky-400">R:R {openTradeRR(open)}</span>
                         )}
                       </p>
                     )}
@@ -179,7 +179,7 @@ export default function OpenTradesPage() {
                           openId: open.id,
                         })
                       }
-                      className="rounded-xl bg-emerald-500/20 px-3 py-1.5 text-sm font-medium text-emerald-300 hover:bg-emerald-500/30"
+                      className="rounded-xl bg-sky-500/20 px-3 py-1.5 text-sm font-medium text-sky-300 hover:bg-sky-500/30"
                     >
                       Journal outcome
                     </button>
@@ -202,9 +202,9 @@ export default function OpenTradesPage() {
                 {closeForm.openId === open.id && (
                   <form
                     onSubmit={handleCloseSubmit(open)}
-                    className="mt-4 space-y-3 rounded-xl border border-emerald-500/30 bg-black/40 p-4"
+                    className="mt-4 space-y-3 rounded-xl border border-sky-500/30 bg-black/40 p-4"
                   >
-                    <p className="text-sm font-medium text-emerald-300">
+                    <p className="text-sm font-medium text-sky-300">
                       How did this trade end?
                     </p>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -308,7 +308,7 @@ export default function OpenTradesPage() {
                             }
                             className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${
                               closeForm.rating === n
-                                ? "bg-emerald-500 text-black"
+                                ? "bg-sky-500 text-black"
                                 : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
                             }`}
                           >
@@ -322,7 +322,7 @@ export default function OpenTradesPage() {
                         Screenshot (optional)
                       </label>
                       <div className="flex flex-wrap items-center gap-3">
-                        <label className="cursor-pointer rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20">
+                        <label className="cursor-pointer rounded-lg border border-sky-500/50 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-300 hover:bg-sky-500/20">
                           {closeForm.screenshot ? "Change screenshot" : "Add screenshot"}
                           <input
                             type="file"
@@ -364,7 +364,7 @@ export default function OpenTradesPage() {
                     <div className="flex gap-2">
                       <button
                         type="submit"
-                        className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black"
+                        className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-black"
                       >
                         Close & save to journal
                       </button>

@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { insertOpenTrade } from "@/lib/supabase/open-trades";
 import { addOpenTrade, type OpenTrade } from "@/lib/journal";
+import { logError } from "@/lib/log-error";
 
 function todayKey(): string {
   const d = new Date();
@@ -70,9 +71,9 @@ export default function TradeForm() {
         );
       }
       handleReset();
-      alert("Trade opened. Close it from the Open Trades tab when done.");
+      alert("Trade opened. Close it from the Live Trades tab when done.");
     } catch (err) {
-      console.error(err);
+      logError(err);
       alert("Failed to save open trade. Please try again.");
     } finally {
       setSubmitting(false);
@@ -95,7 +96,7 @@ export default function TradeForm() {
     <form onSubmit={handleSubmit} className="mt-8 rounded-xl bg-zinc-900 p-6">
       <h2 className="mb-4 text-xl font-bold">Log trade (open)</h2>
       <p className="mb-4 text-xs text-zinc-400">
-        Log the trade when you enter. Add the outcome later from Open Trades.
+        Log the trade when you enter. Add the outcome later from Live Trades.
       </p>
 
       <select
@@ -159,7 +160,7 @@ export default function TradeForm() {
           />
         </div>
         {rrLabel && (
-          <p className="mt-2 text-xs text-emerald-400">
+          <p className="mt-2 text-xs text-sky-400">
             Risk:reward = {rrLabel}
           </p>
         )}
@@ -196,13 +197,13 @@ export default function TradeForm() {
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={submitting} className="rounded bg-emerald-500 px-4 py-3 font-bold disabled:opacity-50">
+        <button type="submit" disabled={submitting} className="rounded bg-sky-500 px-4 py-3 font-bold disabled:opacity-50">
           Open trade
         </button>
         <button
           type="button"
           onClick={handleReset}
-          className="rounded border border-white/20 px-4 py-3 font-medium text-zinc-200 hover:border-emerald-400/60 hover:text-emerald-300"
+          className="rounded border border-white/20 px-4 py-3 font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
         >
           Reset
         </button>

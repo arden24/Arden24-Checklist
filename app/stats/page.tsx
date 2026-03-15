@@ -8,7 +8,9 @@ import { fetchTrades } from "@/lib/supabase/trades";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
 import { loadTrades, loadOpenTrades } from "@/lib/journal";
 import type { Trade } from "@/lib/supabase/trades";
+import { logError } from "@/lib/log-error";
 import SummaryCard from "@/components/SummaryCard";
+import PerformanceInsights from "@/components/PerformanceInsights";
 
 const MONTH_ABBREV = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -79,8 +81,8 @@ export default function StatsPage() {
 
   const load = useCallback(() => {
     if (supabase && user) {
-      fetchTrades(supabase).then(setClosedTrades).catch(console.error);
-      fetchOpenTrades(supabase).then((list) => setOpenTradesCount(list.length)).catch(console.error);
+      fetchTrades(supabase).then(setClosedTrades).catch(logError);
+      fetchOpenTrades(supabase).then((list) => setOpenTradesCount(list.length)).catch(logError);
     } else {
       setClosedTrades(loadTrades(user?.id) as Trade[]);
       setOpenTradesCount(loadOpenTrades(user?.id).length);
@@ -108,7 +110,7 @@ export default function StatsPage() {
 
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <SummaryCard title="Total Trades" value={String(stats.total)} subtitle="Closed" />
-          <SummaryCard title="Open Trades" value={String(stats.openTradesCount)} subtitle="Current positions" />
+          <SummaryCard title="Live Trades" value={String(stats.openTradesCount)} subtitle="Current positions" />
           <SummaryCard title="Net P/L" value={stats.netPnlStr} subtitle="Total from closed" />
           <SummaryCard title="Win Rate" value={`${stats.winRate}%`} subtitle="Profitable trades" />
         </section>
@@ -126,8 +128,8 @@ export default function StatsPage() {
           />
           <SummaryCard
             title="Best Traded Asset"
-            value={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "—"}
-            subtitle={stats.bestTradedAsset ? stats.bestTradedAsset.name : "No data yet"}
+            value={stats.bestTradedAsset ? stats.bestTradedAsset.name : "—"}
+            subtitle={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "No data yet"}
           />
           <SummaryCard
             title="Most Traded Market"
@@ -137,10 +139,14 @@ export default function StatsPage() {
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+          <PerformanceInsights trades={closedTrades} />
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
           <h2 className="text-sm font-semibold text-white">Recent Trades</h2>
           <p className="mt-1 text-xs text-zinc-500">Last 10 closed trades</p>
           {stats.recentTrades.length === 0 ? (
-            <p className="mt-4 text-sm text-zinc-500">No closed trades yet. Close trades from the Open Trades page.</p>
+            <p className="mt-4 text-sm text-zinc-500">No closed trades yet. Close trades from the Live Trades page.</p>
           ) : (
             <ul className="mt-4 space-y-2">
               {stats.recentTrades.map((t) => (
@@ -150,7 +156,7 @@ export default function StatsPage() {
                 >
                   <span className="font-medium text-white">{t.pair}</span>
                   <span className="text-zinc-400">{t.market}</span>
-                  <span className={t.pnl >= 0 ? "text-emerald-400" : "text-red-400"}>
+                  <span className={t.pnl >= 0 ? "text-sky-400" : "text-red-400"}>
                     {formatPnl(t.pnl)}
                   </span>
                 </li>
@@ -159,7 +165,7 @@ export default function StatsPage() {
           )}
           <Link
             href="/journal"
-            className="mt-4 inline-block text-xs font-medium text-emerald-400 hover:text-emerald-300"
+            className="mt-4 inline-block text-xs font-medium text-sky-400 hover:text-sky-300"
           >
             View full journal →
           </Link>

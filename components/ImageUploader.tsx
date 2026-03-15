@@ -46,7 +46,7 @@ export default function ImageUploader({ storageKey }: ImageUploaderProps) {
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="rounded-xl border border-emerald-500/60 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20"
+        className="rounded-xl border border-sky-500/60 bg-sky-500/10 px-4 py-2 text-xs font-semibold text-sky-300 hover:bg-sky-500/20"
       >
         Add Image
       </button>

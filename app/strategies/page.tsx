@@ -6,6 +6,7 @@ import StrategyCard from "@/components/strategy-card";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
+import { logError } from "@/lib/log-error";
 import {
   fetchStrategies,
   deleteStrategy as deleteStrategyApi,
@@ -24,7 +25,7 @@ export default function StrategiesPage() {
       setLoading(true);
       fetchStrategies(supabase)
         .then(setStrategies)
-        .catch(console.error)
+        .catch(logError)
         .finally(() => setLoading(false));
     } else if (typeof window !== "undefined") {
       setLoading(true);
@@ -56,7 +57,7 @@ export default function StrategiesPage() {
         await deleteStrategyApi(supabase, id);
         setStrategies((prev) => prev.filter((s) => s.id !== id));
       } catch (err) {
-        console.error(err);
+        logError(err);
         alert("Failed to delete strategy. Please try again.");
       }
     } else {
@@ -85,7 +86,7 @@ export default function StrategiesPage() {
           </div>
           <Link
             href="/strategies/new"
-            className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-black"
+            className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black"
           >
             + New strategy
           </Link>
@@ -106,7 +107,7 @@ export default function StrategiesPage() {
             </p>
             <Link
               href="/strategies/new"
-              className="mt-4 inline-flex items-center rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-black"
+              className="mt-4 inline-flex items-center rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-black"
             >
               Build a strategy
             </Link>

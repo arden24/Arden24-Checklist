@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchTrades } from "@/lib/supabase/trades";
 import { loadTrades, type Trade } from "@/lib/journal";
+import { logError } from "@/lib/log-error";
 
 function formatPnl(t: Trade): string {
   const sym = t.currency === "GBP" ? "£" : t.currency === "EUR" ? "€" : "$";
@@ -27,7 +28,7 @@ export default function JournalList() {
 
   const load = useCallback(() => {
     if (supabase && user) {
-      fetchTrades(supabase).then(setTrades).catch(console.error);
+      fetchTrades(supabase).then(setTrades).catch(logError);
     } else {
       setTrades(loadTrades(user?.id));
     }
@@ -47,7 +48,7 @@ export default function JournalList() {
             Recent closed trades
           </h2>
           <p className="text-xs text-zinc-500">
-            From Open Trades → Journal outcome. These feed the Journal tab too.
+            From Live Trades → Journal outcome. These feed the Journal tab too.
           </p>
         </div>
         {trades.length > 0 && (
@@ -64,7 +65,7 @@ export default function JournalList() {
         {recent.length === 0 ? (
           <div className="rounded-xl bg-black/40 px-3 py-6 text-center text-xs text-zinc-500">
             No closed trades yet. Open a trade from here or the Checklist, then
-            close it from the <Link href="/open-trades" className="text-emerald-400 hover:underline">Open Trades</Link> tab.
+            close it from the <Link href="/open-trades" className="text-sky-400 hover:underline">Live Trades</Link> tab.
           </div>
         ) : (
           recent.map((t) => (
@@ -82,7 +83,7 @@ export default function JournalList() {
                 <p
                   className={`text-xs font-semibold ${
                     formatResult(t) === "Win"
-                      ? "text-emerald-400"
+                      ? "text-sky-400"
                       : formatResult(t) === "Loss"
                       ? "text-red-400"
                       : "text-zinc-300"

@@ -27,7 +27,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key`}
         href="https://supabase.com/dashboard/project/_/settings/api"
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-3 inline-block text-xs font-medium text-emerald-400 hover:text-emerald-300 underline"
+        className="mt-3 inline-block text-xs font-medium text-sky-400 hover:text-sky-300 underline"
       >
         Open Supabase API settings →
       </a>

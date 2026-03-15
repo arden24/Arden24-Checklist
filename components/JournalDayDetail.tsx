@@ -37,7 +37,7 @@ export default function JournalDayDetail({
   ).length;
 
   const pnlColor =
-    totalPnl > 0 ? "text-emerald-400" : totalPnl < 0 ? "text-red-400" : "text-zinc-400";
+    totalPnl > 0 ? "text-sky-400" : totalPnl < 0 ? "text-red-400" : "text-zinc-400";
   const primaryCurrency = trades[0]?.currency ?? "USD";
 
   return (
@@ -57,7 +57,7 @@ export default function JournalDayDetail({
         </div>
         <div className="rounded-lg bg-slate-900/80 p-2">
           <p className="text-xs text-zinc-500">Wins</p>
-          <p className="font-semibold text-emerald-400">{wins}</p>
+          <p className="font-semibold text-sky-400">{wins}</p>
         </div>
         <div className="rounded-lg bg-slate-900/80 p-2">
           <p className="text-xs text-zinc-500">Losses</p>
