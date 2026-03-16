@@ -197,40 +197,12 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
       <div className="mx-auto max-w-6xl space-y-8">
-        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
-          <div>
-            <h1 className="text-4xl font-bold">Trading Dashboard</h1>
-            <p className="mt-3 text-zinc-400">
-              Log trades, review performance, size positions, and stay
-              disciplined with your strategy.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-xs text-zinc-300">
-            <span className="hidden text-zinc-400 sm:inline">Jump to</span>
-            <select
-              onChange={(e) => {
-                const targetId = e.target.value;
-                if (!targetId) return;
-                const el = document.getElementById(targetId);
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
-              }}
-              defaultValue=""
-              className="rounded-xl bg-zinc-800 px-3 py-1.5 text-xs text-white outline-none"
-            >
-              <option value="" disabled>
-                Choose section
-              </option>
-              <option value="dashboard-summary">Stats</option>
-              <option value="dashboard-insights">Performance Insights</option>
-              <option value="dashboard-trades">Recent trades</option>
-              <option value="dashboard-performance">Performance</option>
-              <option value="dashboard-calculator">Risk calculator</option>
-              <option value="dashboard-strategies">Strategy checklist</option>
-            </select>
-          </div>
+        <div>
+          <h1 className="text-4xl font-bold">Trading Dashboard</h1>
+          <p className="mt-3 text-zinc-400">
+            Log trades, review performance, size positions, and stay
+            disciplined with your strategy.
+          </p>
         </div>
 
         <section id="dashboard-summary">
