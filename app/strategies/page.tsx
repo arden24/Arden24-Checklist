@@ -72,21 +72,23 @@ export default function StrategiesPage() {
       try {
         await deleteStrategyApi(supabase, id);
         setStrategies((prev) => prev.filter((s) => s.id !== id));
+        return;
       } catch (err) {
+        // If Supabase delete fails (e.g. auth / RLS issue), fall back to local storage
         logError(err);
-        alert("Failed to delete strategy. Please try again.");
       }
-    } else {
-      setStrategies((prev) => {
-        const next = prev.filter((s) => s.id !== id);
-        try {
-          window.localStorage.setItem(strategiesKey, JSON.stringify(next));
-        } catch {
-          // ignore
-        }
-        return next;
-      });
     }
+
+    // Local fallback (or primary path when no Supabase/user)
+    setStrategies((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      try {
+        window.localStorage.setItem(strategiesKey, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   }
 
   return (
