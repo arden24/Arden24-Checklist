@@ -240,17 +240,37 @@ export default function DashboardPage() {
           <JournalList />
         </section>
 
-        <section id="dashboard-calculator" className="grid gap-6 md:grid-cols-1">
+        <section id="dashboard-calculator" className="grid gap-6 md:grid-cols-2">
           <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-white">Lot Size Calculator</h2>
-                <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-                  Risk
-                </span>
-              </div>
-              <div className="mt-3">
-                <LotSizeCalculator />
-              </div>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-white">Lot Size Calculator</h2>
+              <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                Risk
+              </span>
+            </div>
+            <div className="mt-3">
+              <LotSizeCalculator />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-white">Log a trade</h2>
+              <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                Journal
+              </span>
+            </div>
+            <p className="mt-3 text-xs text-zinc-400">
+              Capture your entry, stop, target and notes immediately after you size the position.
+            </p>
+            <div className="mt-4">
+              <Link
+                href="/journal"
+                className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-black hover:bg-sky-400"
+              >
+                Log a trade
+              </Link>
+            </div>
           </div>
         </section>
 
