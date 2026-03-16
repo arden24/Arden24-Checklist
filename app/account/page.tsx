@@ -7,7 +7,7 @@ export default function AccountPage() {
   const { user } = useAuth();
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
+    <main className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 sm:py-8">
       <div className="mx-auto max-w-2xl space-y-6">
         <header>
           <h1 className="text-3xl font-bold">Account</h1>

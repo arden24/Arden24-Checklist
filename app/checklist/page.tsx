@@ -26,7 +26,23 @@ export default function ChecklistPage() {
             setChecked(new Array(list[0].checklist.length).fill(false));
           }
         })
-        .catch(logError);
+        .catch((err) => {
+          // If Supabase fetch fails (auth/RLS/offline), fall back to local storage
+          logError(err);
+          if (typeof window !== "undefined") {
+            try {
+              const raw = window.localStorage.getItem(strategiesKey);
+              const parsed = raw ? (JSON.parse(raw) as Strategy[]) : [];
+              setStrategies(parsed);
+              if (parsed.length > 0) {
+                setActiveId(parsed[0].id);
+                setChecked(new Array(parsed[0].checklist.length).fill(false));
+              }
+            } catch {
+              // ignore
+            }
+          }
+        });
     } else if (typeof window !== "undefined") {
       try {
         const raw = window.localStorage.getItem(strategiesKey);
@@ -83,7 +99,7 @@ export default function ChecklistPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
+    <main className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 sm:py-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>

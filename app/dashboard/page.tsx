@@ -196,7 +196,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
+    <main className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl space-y-8">
         <div>
           <h1 className="text-4xl font-bold">Trading Dashboard</h1>

@@ -118,10 +118,10 @@ export default function Navbar() {
   if (isLandingLoggedOut) {
     return (
       <header className="border-b border-gray-700 bg-black">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 md:gap-4 md:px-6">
           <Link
             href="/"
-            className="text-xl font-normal tracking-tight text-white hover:text-sky-300"
+            className="text-lg font-semibold tracking-tight text-white hover:text-sky-300"
           >
             Arden24
           </Link>
@@ -146,19 +146,21 @@ export default function Navbar() {
 
   return (
     <header className="border-b border-gray-700 bg-black">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
-        <div className="flex items-center gap-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 md:gap-4 md:px-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link
             href="/dashboard"
-            className="text-base font-normal tracking-tight text-white hover:text-sky-300 whitespace-nowrap"
+            className="shrink-0 text-base font-semibold tracking-tight text-white hover:text-sky-300"
           >
             Arden24
           </Link>
-          <QuickAccess />
+          <div className="hidden sm:block">
+            <QuickAccess />
+          </div>
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
+            className="ml-1 hidden items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300 sm:flex"
           >
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sky-500/10">
               <svg
@@ -180,7 +182,7 @@ export default function Navbar() {
           </button>
         </div>
 
-        <nav className="flex flex-1 items-center justify-center">
+        <nav className="hidden flex-1 items-center justify-center md:flex">
           <ul className="flex items-center gap-1 rounded-2xl border border-white/10 bg-black/40 px-1.5 py-1">
             {navItems.map((item) => {
               const isActive =
@@ -218,44 +220,46 @@ export default function Navbar() {
           </ul>
         </nav>
 
-        <div className="flex items-center gap-3">
-          {!loading &&
-            (user ? (
-              <>
-                <Link
-                  href="/account"
-                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
-                >
-                  Account
-                </Link>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await signOut();
-                    router.push("/");
-                    router.refresh();
-                  }}
-                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-red-400/60 hover:text-red-300"
-                >
-                  Sign out
-                </button>
-              </>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/sign-in"
-                  className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href="/sign-up"
-                  className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20"
-                >
-                  Sign up
-                </Link>
-              </div>
-            ))}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="hidden md:flex md:items-center md:gap-3">
+            {!loading &&
+              (user ? (
+                <>
+                  <Link
+                    href="/account"
+                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
+                  >
+                    Account
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await signOut();
+                      router.push("/");
+                      router.refresh();
+                    }}
+                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-red-400/60 hover:text-red-300"
+                  >
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/sign-in"
+                    className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20"
+                  >
+                    Sign up
+                  </Link>
+                </div>
+              ))}
+          </div>
         </div>
       </div>
     </header>

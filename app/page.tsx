@@ -65,7 +65,7 @@ export default function HomePage() {
   if (!loading && !user) {
     return (
       <main className="min-h-screen bg-black text-white">
-        <section className="mx-auto flex min-h-[70vh] max-w-6xl flex-col items-center justify-center px-6 pt-12 text-center">
+        <section className="mx-auto flex min-h-[70vh] max-w-6xl flex-col items-center justify-center px-4 pt-10 text-center sm:px-6 sm:pt-12">
           <div className="max-w-3xl w-full">
             <p className="mb-4 mt-6 text-sm uppercase tracking-[0.2em] text-sky-400">
               Arden24
@@ -101,8 +101,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="bg-black/60 pt-16">
-          <div className="mx-auto max-w-6xl px-6 pb-16">
+        <section className="bg-black/60 pt-14 sm:pt-16">
+          <div className="mx-auto max-w-6xl px-4 pb-14 sm:px-6 sm:pb-16">
             <div className="grid gap-6 md:grid-cols-3">
               {LANDING_FEATURES.map((feature) => (
                 <article
@@ -130,7 +130,7 @@ export default function HomePage() {
   // Logged-in: existing app homepage with strategies
   return (
     <main className="min-h-screen bg-black text-white">
-      <section className="mx-auto flex min-h-[70vh] max-w-6xl flex-col items-center justify-center px-6 text-center">
+      <section className="mx-auto flex min-h-[70vh] max-w-6xl flex-col items-center justify-center px-4 text-center sm:px-6">
         <div className="max-w-3xl">
           <p className="mb-4 text-sm uppercase tracking-[0.2em] text-sky-400">
             Built for traders
