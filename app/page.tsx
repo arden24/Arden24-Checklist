@@ -145,45 +145,46 @@ export default function HomePage() {
             track performance with a clean dashboard.
           </p>
 
-          <div className="mt-8 flex flex-col items-center gap-4">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               href="/dashboard"
               className="rounded-xl bg-sky-500 px-6 py-3 font-semibold text-black"
             >
               Open Dashboard
             </Link>
-            <div className="flex flex-wrap justify-center gap-3 text-sm">
-              <Link
-                href="/strategies"
-                className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:border-sky-400/70 hover:text-sky-200"
-              >
-                Strategies
-              </Link>
-              <Link
-                href="/checklist"
-                className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:border-sky-400/70 hover:text-sky-200"
-              >
-                Checklist
-              </Link>
-              <Link
-                href="/open-trades"
-                className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:border-sky-400/70 hover:text-sky-200"
-              >
-                Live trades
-              </Link>
-              <Link
-                href="/journal"
-                className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:border-sky-400/70 hover:text-sky-200"
-              >
-                Journal
-              </Link>
-              <Link
-                href="/stats"
-                className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:border-sky-400/70 hover:text-sky-200"
-              >
-                Stats
-              </Link>
-            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm">
+            <Link
+              href="/strategies"
+              className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:bg-white/5"
+            >
+              Strategies
+            </Link>
+            <Link
+              href="/checklist"
+              className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:bg-white/5"
+            >
+              Checklist
+            </Link>
+            <Link
+              href="/open-trades"
+              className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:bg-white/5"
+            >
+              Live Trades
+            </Link>
+            <Link
+              href="/journal"
+              className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:bg-white/5"
+            >
+              Journal
+            </Link>
+            <Link
+              href="/stats"
+              className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:bg-white/5"
+            >
+              Stats
+            </Link>
           </div>
         </div>
       </section>
