@@ -105,15 +105,25 @@ export default function StrategyForm() {
         }))
         .filter((item) => item.text.length > 0);
 
+      let savedToSupabase = false;
+
       if (supabase && user) {
-        await insertStrategy(supabase, user.id, {
-          name: name.trim(),
-          description: description.trim(),
-          market: market.trim(),
-          timeframes: timeframes.trim(),
-          checklist: trimmedChecklist,
-        });
-      } else {
+        try {
+          await insertStrategy(supabase, user.id, {
+            name: name.trim(),
+            description: description.trim(),
+            market: market.trim(),
+            timeframes: timeframes.trim(),
+            checklist: trimmedChecklist,
+          });
+          savedToSupabase = true;
+        } catch (err) {
+          // If Supabase write fails (e.g. auth / RLS issue), fall back to local storage
+          logError(err);
+        }
+      }
+
+      if (!savedToSupabase) {
         const nextStrategy: Strategy = {
           id: crypto.randomUUID(),
           name: name.trim(),
