@@ -21,20 +21,36 @@ export default function StrategiesPage() {
   const strategiesKey = getStrategiesKey(user?.id);
 
   const load = useCallback(() => {
+    setLoading(true);
+
     if (supabase && user) {
-      setLoading(true);
       fetchStrategies(supabase)
         .then(setStrategies)
-        .catch(logError)
+        .catch((err) => {
+          // If Supabase fetch fails (e.g. auth / RLS issue), fall back to local storage
+          logError(err);
+          if (typeof window !== "undefined") {
+            try {
+              const raw = window.localStorage.getItem(strategiesKey);
+              setStrategies(raw ? (JSON.parse(raw) as Strategy[]) : []);
+            } catch {
+              setStrategies([]);
+            }
+          } else {
+            setStrategies([]);
+          }
+        })
         .finally(() => setLoading(false));
     } else if (typeof window !== "undefined") {
-      setLoading(true);
       try {
         const raw = window.localStorage.getItem(strategiesKey);
         setStrategies(raw ? (JSON.parse(raw) as Strategy[]) : []);
       } catch {
         setStrategies([]);
       }
+      setLoading(false);
+    } else {
+      setStrategies([]);
       setLoading(false);
     }
   }, [supabase, user, strategiesKey]);
