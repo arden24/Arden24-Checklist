@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import LotSizeCalculator from "@/components/lot-size-calculator";
+import TradeForm from "@/components/trade-form";
 import StrategyCard from "@/components/strategy-card";
 import SummaryCard from "@/components/SummaryCard";
 import JournalList from "@/components/JournalList";
@@ -240,7 +241,7 @@ export default function DashboardPage() {
           <JournalList />
         </section>
 
-        <section id="dashboard-calculator" className="grid gap-6 md:grid-cols-2">
+        <section id="dashboard-calculator" className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)]">
           <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-white">Lot Size Calculator</h2>
@@ -253,23 +254,18 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+          <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-4">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-white">Log a trade</h2>
+              <h2 className="text-sm font-semibold text-white">Log trade</h2>
               <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
                 Journal
               </span>
             </div>
-            <p className="mt-3 text-xs text-zinc-400">
-              Capture your entry, stop, target and notes immediately after you size the position.
+            <p className="mt-1 text-xs text-zinc-500">
+              Complete your sizing, then record the trade details here. It will appear in Live Trades and flow into your stats when closed.
             </p>
-            <div className="mt-4">
-              <Link
-                href="/journal"
-                className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-black hover:bg-sky-400"
-              >
-                Log a trade
-              </Link>
+            <div className="mt-3">
+              <TradeForm />
             </div>
           </div>
         </section>
