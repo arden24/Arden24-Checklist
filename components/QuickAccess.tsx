@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const quickLinks = [
   { href: "/calculator", label: "Lot size calculator", icon: "∑" },
+  { href: "/dashboard#dashboard-calculator", label: "Log a trade", icon: "✎" },
   { href: "/checklist", label: "Checklist & log trade", icon: "✓" },
   { href: "/strategies/new", label: "New strategy", icon: "+" },
   { href: "/dashboard", label: "Dashboard", icon: "▣" },
