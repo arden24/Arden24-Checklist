@@ -89,6 +89,10 @@ export async function deleteOpenTrade(
   supabase: SupabaseClient,
   id: string
 ): Promise<void> {
+  console.log("[deleteOpenTrade] Deleting open_trades row id:", id);
   const { error } = await supabase.from("open_trades").delete().eq("id", id);
-  if (error) throw error;
+  if (error) {
+    console.error("[deleteOpenTrade] Supabase delete error", error.code, error.message, error.details);
+    throw error;
+  }
 }

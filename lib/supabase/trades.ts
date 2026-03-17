@@ -83,30 +83,33 @@ export async function insertTrade(
   userId: string,
   trade: Omit<Trade, "id" | "createdAt">
 ): Promise<Trade> {
-  const { data, error } = await supabase
-    .from("trades")
-    .insert({
-      user_id: userId,
-      date: trade.date,
-      pair: trade.pair,
-      market: trade.market,
-      session: trade.session ?? null,
-      direction: trade.direction ?? null,
-      pnl: trade.pnl,
-      rr: trade.rr ?? null,
-      description: trade.description ?? null,
-      notes: trade.notes ?? null,
-      thoughts: trade.thoughts ?? null,
-      confidence: trade.confidence ?? null,
-      strategy: trade.strategy ?? null,
-      result: trade.result ?? null,
-      currency: trade.currency ?? null,
-      time: trade.time ?? null,
-      screenshot: trade.screenshot ?? null,
-      rating: trade.rating ?? null,
-    })
-    .select()
-    .single();
-  if (error) throw error;
+  // Map to DB snake_case; ensure rating is integer for trades.rating column (int)
+  const row = {
+    user_id: userId,
+    date: trade.date,
+    pair: trade.pair,
+    market: trade.market,
+    session: trade.session ?? null,
+    direction: trade.direction ?? null,
+    pnl: trade.pnl,
+    rr: trade.rr ?? null,
+    description: trade.description ?? null,
+    notes: trade.notes ?? null,
+    thoughts: trade.thoughts ?? null,
+    confidence: trade.confidence ?? null,
+    strategy: trade.strategy ?? null,
+    result: trade.result ?? null,
+    currency: trade.currency ?? null,
+    time: trade.time ?? null,
+    screenshot: trade.screenshot ?? null,
+    rating: trade.rating != null ? Math.round(trade.rating) : null,
+  };
+  console.log("[insertTrade] Inserting row into trades", row);
+  const { data, error } = await supabase.from("trades").insert(row).select().single();
+  if (error) {
+    console.error("[insertTrade] Supabase insert error", error.code, error.message, error.details);
+    throw error;
+  }
+  console.log("[insertTrade] Insert succeeded, id:", (data as TradeRow)?.id);
   return rowToTrade(data as TradeRow);
 }

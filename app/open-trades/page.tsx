@@ -81,7 +81,17 @@ export default function OpenTradesPage() {
       alert("Enter a valid P/L number.");
       return;
     }
+    if (!user?.id || !supabase) {
+      alert("You must be signed in to close a trade.");
+      return;
+    }
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("[OpenTrades] Closing trade — user.id:", user.id, "| session exists:", !!session, "| auth.uid():", session?.user?.id ?? "null");
+      if (!session) {
+        alert("Your session has expired. Please sign in again and try closing the trade.");
+        return;
+      }
       await closeTrade(
         open,
         {
@@ -93,14 +103,16 @@ export default function OpenTradesPage() {
           screenshot: closeForm.screenshot ?? undefined,
           rating: closeForm.rating ?? undefined,
         },
-        user?.id,
+        user.id,
         supabase
       );
       loadOpenTradesList();
       setCloseForm(initialCloseState);
-    } catch (err) {
+    } catch (err: unknown) {
       logError(err);
-      alert("Failed to save trade. Please try again.");
+      const message = err instanceof Error ? err.message : String(err);
+      const details = err && typeof err === "object" && "message" in err ? String((err as { message?: string }).message) : message;
+      alert(`Failed to save trade. ${details || "Please try again."}`);
     }
   };
 

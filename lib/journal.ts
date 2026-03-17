@@ -255,25 +255,37 @@ export async function closeTrade(
     rating: outcome.rating,
   };
 
+  // Primary production path: Supabase as source of truth
   if (supabase && userId) {
     const { insertTrade } = await import("@/lib/supabase/trades");
     const { deleteOpenTrade } = await import("@/lib/supabase/open-trades");
-    await insertTrade(supabase, userId, trade);
-    await deleteOpenTrade(supabase, open.id);
-  } else {
-    const fullTrade: Trade = {
-      ...trade,
-      id: open.id,
-      createdAt: new Date().toISOString(),
-    };
-    const existing = loadTrades(userId);
-    const key = getTradesKey(userId);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        key,
-        JSON.stringify([fullTrade, ...existing])
-      );
+
+    try {
+      console.log("[closeTrade] Inserting closed trade into trades table", { openId: open.id, date: trade.date, pair: trade.pair, market: trade.market, pnl: trade.pnl });
+      // 1) Insert closed trade into trades table
+      await insertTrade(supabase, userId, trade);
+      console.log("[closeTrade] Insert into trades succeeded");
+      // 2) Only after successful insert, delete from open_trades
+      await deleteOpenTrade(supabase, open.id);
+      console.log("[closeTrade] Delete from open_trades succeeded");
+    } catch (err) {
+      console.error("[closeTrade] Supabase error", err);
+      // Surface Supabase errors to the caller (UI will show a clear message)
+      throw err;
     }
+    return;
+  }
+
+  // Dev / offline fallback: use localStorage when Supabase or userId are not available
+  const fullTrade: Trade = {
+    ...trade,
+    id: open.id,
+    createdAt: new Date().toISOString(),
+  };
+  const existing = loadTrades(userId);
+  const key = getTradesKey(userId);
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(key, JSON.stringify([fullTrade, ...existing]));
   }
   removeOpenTrade(open.id, userId);
 }
