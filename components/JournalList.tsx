@@ -41,7 +41,7 @@ export default function JournalList() {
   const recent = trades.slice(0, 8);
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+    <div className="rounded-2xl border border-slate-800/90 bg-slate-950/70 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-white">
@@ -54,7 +54,7 @@ export default function JournalList() {
         {trades.length > 0 && (
           <Link
             href="/journal"
-            className="rounded-lg border border-white/10 px-2 py-1 text-xs font-medium text-zinc-300 hover:bg-white/5"
+            className="rounded-full border border-sky-500/50 bg-sky-500/10 px-3 py-1 text-[11px] font-medium text-sky-100 hover:bg-sky-500/20"
           >
             View journal
           </Link>
@@ -63,7 +63,7 @@ export default function JournalList() {
 
       <div className="mt-4 space-y-3 text-sm">
         {recent.length === 0 ? (
-          <div className="rounded-xl bg-black/40 px-3 py-6 text-center text-xs text-zinc-500">
+          <div className="rounded-xl border border-dashed border-slate-700/80 bg-black/40 px-3 py-6 text-center text-xs text-zinc-500">
             No closed trades yet. Open a trade from here or the Checklist, then
             close it from the <Link href="/open-trades" className="text-sky-400 hover:underline">Live Trades</Link> tab.
           </div>

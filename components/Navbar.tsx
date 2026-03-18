@@ -117,7 +117,7 @@ export default function Navbar() {
 
   if (isLandingLoggedOut) {
     return (
-      <header className="border-b border-gray-700 bg-black">
+      <header className="border-b border-slate-800/80 bg-black/90 backdrop-blur-sm shadow-[0_12px_40px_rgba(15,23,42,0.9)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 md:gap-4 md:px-6">
           <Link
             href="/"
@@ -145,8 +145,8 @@ export default function Navbar() {
   }
 
   return (
-    <header className="border-b border-gray-700 bg-black">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 md:gap-4 md:px-6">
+    <header className="border-b border-slate-800/80 bg-black/90 backdrop-blur-sm shadow-[0_12px_40px_rgba(15,23,42,0.9)]">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 md:gap-4 md:px-6">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link
             href="/dashboard"
@@ -183,7 +183,7 @@ export default function Navbar() {
         </div>
 
         <nav className="hidden flex-1 items-center justify-center md:flex">
-          <ul className="flex items-center gap-1 rounded-2xl border border-white/10 bg-black/40 px-1.5 py-1">
+          <ul className="flex items-center gap-1 rounded-2xl border border-white/10 bg-black/60 px-1.5 py-1 shadow-[0_0_0_1px_rgba(30,64,175,0.4)]">
             {navItems.map((item) => {
               const isActive =
                 item.href === "/dashboard"

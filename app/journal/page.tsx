@@ -124,7 +124,7 @@ export default function JournalPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-3">
+            <div className="rounded-xl border border-slate-800/90 bg-slate-950/70 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
               <p className="text-xs text-zinc-500">Monthly P/L</p>
               <p
                 className={`text-lg font-semibold ${
@@ -138,19 +138,19 @@ export default function JournalPage() {
                 {formatPnl(monthlyStats.pnl)}
               </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-3">
+            <div className="rounded-xl border border-slate-800/90 bg-slate-950/70 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
               <p className="text-xs text-zinc-500">Wins</p>
               <p className="text-lg font-semibold text-sky-400">
                 {monthlyStats.wins}
               </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-3">
+            <div className="rounded-xl border border-slate-800/90 bg-slate-950/70 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
               <p className="text-xs text-zinc-500">Losses</p>
               <p className="text-lg font-semibold text-red-400">
                 {monthlyStats.losses}
               </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-3">
+            <div className="rounded-xl border border-slate-800/90 bg-slate-950/70 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
               <p className="text-xs text-zinc-500">Total Trades</p>
               <p className="text-lg font-semibold text-white">
                 {monthlyStats.total}

@@ -6,9 +6,9 @@ type SummaryCardProps = {
 
 export default function SummaryCard({ title, value, subtitle }: SummaryCardProps) {
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-[0_0_0_1px_rgba(15,23,42,0.9)]">
+    <div className="flex flex-col justify-between rounded-2xl border border-slate-800/90 bg-slate-950/70 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)] transition hover:border-sky-500/50 hover:shadow-[0_24px_80px_rgba(8,47,73,0.9)]">
       <div>
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
+        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-400/90">
           {title}
         </p>
         <p className="mt-3 text-3xl font-semibold text-white">{value}</p>

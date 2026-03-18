@@ -64,55 +64,82 @@ export default function HomePage() {
   // Logged-out: marketing landing page
   if (!loading && !user) {
     return (
-      <main className="min-h-screen bg-black text-white">
-        <section className="mx-auto flex min-h-[70vh] max-w-6xl flex-col items-center justify-center px-4 pt-10 text-center sm:px-6 sm:pt-12">
+      <main className="min-h-screen bg-gradient-to-b from-black via-slate-950 to-black text-white">
+        <section className="relative mx-auto flex min-h-[70vh] max-w-6xl flex-col items-center justify-center px-4 pt-10 text-center sm:px-6 sm:pt-16">
+          <div className="pointer-events-none absolute inset-x-0 top-10 -z-10 h-56 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.22),_transparent_60%)]" />
           <div className="max-w-3xl w-full">
-            <p className="mb-4 mt-6 text-sm uppercase tracking-[0.2em] text-sky-400">
+            <p className="mb-2 mt-4 text-xs font-medium uppercase tracking-[0.25em] text-sky-400/80">
               Arden24
             </p>
-            <p className="mb-6 text-sm uppercase tracking-[0.2em] text-gray-400">
+            <p className="mb-6 text-[11px] uppercase tracking-[0.25em] text-zinc-500">
               Arden Ventures Ltd
             </p>
 
-            <h1 className="text-5xl font-bold leading-tight md:text-7xl">
-              Your trading checklist, calculator and journal in one place
+            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl md:leading-tight">
+              Trade with{" "}
+              <span className="bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
+                discipline
+              </span>
+              , not impulse.
             </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-300">
-              Build your strategy checklist, calculate lot size, log trades, and
-              track performance with a clean dashboard.
+            <p className="mx-auto mt-5 max-w-2xl text-sm text-zinc-300 sm:text-base">
+              Arden24 keeps your strategy, checklist, risk sizing, and journal
+              in one focused workspace so you can execute cleanly in live
+              markets.
             </p>
 
             <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Link
                 href="/sign-in"
-                className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-6 py-3 font-semibold text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20"
+                className="rounded-full bg-sky-500 px-7 py-3 text-sm font-semibold text-black shadow-[0_10px_40px_rgba(56,189,248,0.35)] transition hover:bg-sky-400 hover:shadow-[0_10px_45px_rgba(56,189,248,0.45)]"
               >
-                Sign In
+                Sign in to your journal
               </Link>
 
               <Link
                 href="/sign-up"
-                className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-6 py-3 font-semibold text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20"
+                className="rounded-full border border-zinc-700/80 bg-zinc-900/60 px-7 py-3 text-sm font-semibold text-zinc-100 shadow-[0_0_0_1px_rgba(148,163,184,0.35)] transition hover:border-sky-400/60 hover:bg-slate-900/90 hover:text-sky-100"
               >
-                Sign Up
+                Get started in minutes
               </Link>
+            </div>
+
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-[11px] text-zinc-500">
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/5 px-3 py-1 text-emerald-300/90">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                Built for live trading
+              </span>
+              <span className="hidden sm:inline text-zinc-500">•</span>
+              <span className="text-zinc-500">
+                For journaling, discipline and self‑review only. Not financial advice.
+              </span>
             </div>
           </div>
         </section>
 
-        <section className="bg-black/60 pt-14 sm:pt-16">
+        <section className="border-t border-slate-800/80 bg-gradient-to-b from-black/40 via-slate-950/80 to-black pt-12 sm:pt-16">
           <div className="mx-auto max-w-6xl px-4 pb-14 sm:px-6 sm:pb-16">
+            <div className="mb-8 flex flex-col gap-2 text-left sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-[0.22em] text-sky-400/80">
+                  Why traders use Arden24
+                </p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Everything you need before, during, and after a trade.
+                </p>
+              </div>
+            </div>
             <div className="grid gap-6 md:grid-cols-3">
               {LANDING_FEATURES.map((feature) => (
                 <article
                   key={feature.title}
-                  className="flex flex-col rounded-2xl border border-gray-700 bg-gray-900/80 p-6 shadow-lg"
+                  className="group flex flex-col rounded-2xl border border-slate-800/80 bg-slate-950/70 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.9)] transition hover:border-sky-500/50 hover:shadow-[0_22px_80px_rgba(8,47,73,0.9)]"
                 >
-                  <h3 className="text-lg font-semibold text-white">
+                  <h3 className="text-base font-semibold text-white">
                     {feature.title}
                   </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-gray-400">
+                  <p className="mt-3 text-sm leading-relaxed text-zinc-400">
                     {feature.description}
                   </p>
                 </article>
@@ -129,18 +156,18 @@ export default function HomePage() {
 
   // Logged-in: existing app homepage with strategies
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen bg-gradient-to-b from-black via-slate-950 to-black text-white">
       <section className="mx-auto flex min-h-[70vh] max-w-6xl flex-col items-center justify-center px-4 text-center sm:px-6">
         <div className="max-w-3xl">
           <p className="mb-4 text-sm uppercase tracking-[0.2em] text-sky-400">
             Built for traders
           </p>
 
-          <h1 className="text-5xl font-bold leading-tight md:text-7xl">
-            Your trading checklist, calculator and journal in one place
+          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl md:leading-tight">
+            Your trading checklist, risk and journal in one place.
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-zinc-300">
+          <p className="mx-auto mt-6 max-w-2xl text-sm text-zinc-300 sm:text-base">
             Build your strategy checklist, calculate lot size, log trades, and
             track performance with a clean dashboard.
           </p>
