@@ -4,6 +4,8 @@ export type ChecklistItem = {
   text: string;
   timeframe: string;
   image?: string;
+  weight: number;
+  critical: boolean;
 };
 
 export type Strategy = {
@@ -28,9 +30,7 @@ type StrategyRow = {
 };
 
 function rowToStrategy(row: StrategyRow): Strategy {
-  const checklist = Array.isArray(row.checklist)
-    ? (row.checklist as ChecklistItem[])
-    : [];
+  const checklist = normaliseChecklist(row.checklist);
   return {
     id: row.id,
     name: row.name,
@@ -40,6 +40,96 @@ function rowToStrategy(row: StrategyRow): Strategy {
     checklist,
     createdAt: row.created_at,
   };
+}
+
+function normaliseChecklist(checklist: unknown): ChecklistItem[] {
+  if (!Array.isArray(checklist)) return [];
+
+  const inferredByText: Record<
+    string,
+    { weight: number; critical: boolean }
+  > = {
+    "HTF bias is clear and aligned (Weekly & Daily structure)": {
+      weight: 20,
+      critical: true,
+    },
+    "Price is within a valid HTF AOI (4H / Daily zone)": {
+      weight: 20,
+      critical: true,
+    },
+    "15 minute liquidity has been swept (opposite to HTF bias)": {
+      weight: 20,
+      critical: true,
+    },
+    "Clear break of structure: candle CLOSE beyond the most recent pivot following liquidity sweep, with strong displacement": {
+      weight: 20,
+      critical: true,
+    },
+    "Strong displacement candle (momentum / FVG / engulfing)": {
+      weight: 10,
+      critical: false,
+    },
+    "Entry forms within or near AOI and aligns with bias": {
+      weight: 10,
+      critical: false,
+    },
+    "Trade is within London or New York session": {
+      weight: 10,
+      critical: false,
+    },
+    "Stop loss placed beyond valid 15 minute pivot (structure invalidation)": {
+      weight: 5,
+      critical: false,
+    },
+    "Risk-to-reward is minimum 1:2 (ideal 1:3+) and aligns with 4H target/liquidity": {
+      weight: 5,
+      critical: false,
+    },
+    "Price is not mid-range (must be at AOI)": {
+      weight: 10,
+      critical: false,
+    },
+  };
+
+  return checklist
+    .map((item: unknown) => {
+      if (typeof item === "string") {
+        const inferred = inferredByText[item];
+        return {
+          text: item,
+          timeframe: "",
+          image: undefined,
+          weight: inferred?.weight ?? 1,
+          critical: inferred?.critical ?? false,
+        } satisfies ChecklistItem;
+      }
+
+      const obj = item as Record<string, unknown>;
+      const text = typeof obj.text === "string" ? obj.text : "";
+      const timeframe = typeof obj.timeframe === "string" ? obj.timeframe : "";
+      const image = typeof obj.image === "string" ? obj.image : undefined;
+      const inferred = inferredByText[text];
+
+      const rawWeight = obj.weight;
+      const weight = Number.isFinite(Number(rawWeight))
+        ? Number(rawWeight)
+        : inferred?.weight ?? 1;
+
+      const rawCritical = obj.critical;
+      const critical =
+        typeof rawCritical === "boolean"
+          ? rawCritical
+          : inferred?.critical ?? false;
+
+      return {
+        text,
+        timeframe,
+        image,
+        weight,
+        critical,
+      } satisfies ChecklistItem;
+    })
+    .filter((it) => it.text.trim().length > 0);
 }
 
 export async function fetchStrategies(

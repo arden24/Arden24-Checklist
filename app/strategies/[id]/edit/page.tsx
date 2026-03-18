@@ -17,14 +17,16 @@ function normaliseChecklist(
   checklist: Strategy["checklist"]
 ): ChecklistItem[] {
   if (!checklist || checklist.length === 0)
-    return [{ text: "", timeframe: "", image: undefined }];
+    return [{ text: "", timeframe: "", image: undefined, weight: 1, critical: false }];
   return checklist.map((item) =>
     typeof item === "string"
-      ? { text: item, timeframe: "", image: undefined }
+      ? { text: item, timeframe: "", image: undefined, weight: 1, critical: false }
       : {
           text: item.text ?? "",
           timeframe: item.timeframe ?? "",
           image: item.image,
+          weight: Number.isFinite(Number(item.weight)) ? Number(item.weight) : 1,
+          critical: Boolean(item.critical),
         }
   );
 }
@@ -95,7 +97,7 @@ export default function EditStrategyPage() {
   function addChecklistItem() {
     setChecklistItems((items) => [
       ...items,
-      { text: "", timeframe: "", image: undefined },
+      { text: "", timeframe: "", image: undefined, weight: 1, critical: false },
     ]);
   }
 
@@ -110,6 +112,23 @@ export default function EditStrategyPage() {
       items.map((item, i) =>
         i === index ? { ...item, timeframe: value } : item
       )
+    );
+  }
+
+  function updateChecklistWeight(index: number, value: string) {
+    const nextWeight = Number(value);
+    setChecklistItems((items) =>
+      items.map((item, i) =>
+        i === index
+          ? { ...item, weight: Number.isFinite(nextWeight) ? nextWeight : 1 }
+          : item
+      )
+    );
+  }
+
+  function updateChecklistCritical(index: number, value: boolean) {
+    setChecklistItems((items) =>
+      items.map((item, i) => (i === index ? { ...item, critical: value } : item))
     );
   }
 
@@ -147,6 +166,8 @@ export default function EditStrategyPage() {
           text: item.text.trim(),
           timeframe: item.timeframe.trim(),
           image: item.image,
+          weight: item.weight,
+          critical: item.critical,
         }))
         .filter((item) => item.text.length > 0);
 
@@ -300,7 +321,7 @@ export default function EditStrategyPage() {
             <div className="space-y-2">
               {checklistItems.map((item, index) => (
                 <div key={index} className="space-y-2 rounded-xl bg-zinc-900/60 p-3">
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <input
                       value={item.text}
                       onChange={(e) =>
@@ -317,6 +338,28 @@ export default function EditStrategyPage() {
                       placeholder="TF (e.g. 1H)"
                       className="w-24 rounded-xl bg-zinc-800 px-2 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
                     />
+                    <input
+                      type="number"
+                      value={item.weight}
+                      onChange={(e) =>
+                        updateChecklistWeight(index, e.target.value)
+                      }
+                      placeholder="Weight"
+                      min={0}
+                      step={1}
+                      className="w-24 rounded-xl bg-zinc-800 px-2 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
+                    />
+                    <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={item.critical}
+                        onChange={(e) =>
+                          updateChecklistCritical(index, e.target.checked)
+                        }
+                        className="h-4 w-4 rounded border-zinc-600 bg-slate-950 text-sky-500 focus:ring-0"
+                      />
+                      Critical
+                    </label>
                     <button
                       type="button"
                       onClick={() => removeChecklistItem(index)}

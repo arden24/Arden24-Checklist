@@ -7,6 +7,7 @@ import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
 import { fetchStrategies, type Strategy, type ChecklistItem } from "@/lib/supabase/strategies";
 import { logError } from "@/lib/log-error";
+import { computeWeightedChecklistScore } from "@/lib/checklist-scoring";
 
 export default function ChecklistPage() {
   const { user } = useAuth();
@@ -71,11 +72,19 @@ export default function ChecklistPage() {
     if (!activeStrategy) return [];
     return (activeStrategy.checklist ?? []).map((item: any) =>
       typeof item === "string"
-        ? { text: item, timeframe: "", image: undefined }
+        ? {
+            text: item,
+            timeframe: "",
+            image: undefined,
+            weight: 1,
+            critical: false,
+          }
         : {
             text: item.text ?? "",
             timeframe: item.timeframe ?? "",
             image: item.image,
+            weight: Number.isFinite(Number(item.weight)) ? Number(item.weight) : 1,
+            critical: Boolean(item.critical),
           }
     );
   }, [activeStrategy]);
@@ -85,10 +94,19 @@ export default function ChecklistPage() {
     setChecked(new Array(checklistItems.length).fill(false));
   }, [activeStrategy?.id, checklistItems.length]);
 
-  const totalItems = checklistItems.length;
-  const completed = checked.filter(Boolean).length;
-  const confluence =
-    totalItems === 0 ? 0 : Math.round((completed / totalItems) * 100);
+  const scorableItems = useMemo(
+    () =>
+      checklistItems.map((item, idx) => ({
+        ...item,
+        checked: checked[idx] ?? false,
+      })),
+    [checklistItems, checked]
+  );
+
+  const score = useMemo(
+    () => computeWeightedChecklistScore(scorableItems),
+    [scorableItems]
+  );
 
   function toggleItem(index: number) {
     setChecked((prev) => {
@@ -105,25 +123,61 @@ export default function ChecklistPage() {
           <div>
             <h1 className="text-3xl font-bold">Pre‑trade Checklist</h1>
             <p className="mt-2 text-sm text-zinc-400">
-              Run through your strategy rules, tick each confluence, and then
+              Run through your strategy rules, tick each condition, and then
               log the trade from here.
             </p>
           </div>
 
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex items-baseline gap-2">
-              <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
-                Confluence
-              </p>
-              <p className="text-2xl font-semibold text-sky-400">
-                {confluence}%
-              </p>
-            </div>
-            <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-900">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-sky-400"
-                style={{ width: `${confluence}%` }}
-              />
+          <div className="w-full md:w-auto">
+            <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+                    Weighted Score
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold text-sky-400">
+                    {score.weightedScorePercent}%
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    {score.checkedCount} / {score.totalCount} checked
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+                    Setup Status
+                  </p>
+                  <p
+                    className={`mt-2 text-sm font-semibold ${
+                      score.status === "A+ Setup"
+                        ? "text-sky-300"
+                        : score.status === "Valid Setup"
+                        ? "text-emerald-300"
+                        : score.status === "Risky"
+                        ? "text-amber-300"
+                        : "text-red-300"
+                    }`}
+                  >
+                    {score.status}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-900">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-red-500 via-amber-400 to-sky-400 transition-[width] duration-500 ease-out"
+                  style={{ width: `${score.weightedScorePercent}%` }}
+                />
+              </div>
+
+              {score.missingCritical && (
+                <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-200">
+                    !
+                  </span>
+                  Missing critical condition
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -197,8 +251,8 @@ export default function ChecklistPage() {
                   Strategy Checklist
                 </h2>
                 <p className="mt-1 text-xs text-zinc-500">
-                  The only thing you can do here is tick boxes. Once you are
-                  satisfied with the confluence, log the trade below.
+                  Tick the conditions. Some are critical and will gate your
+                  final setup status.
                 </p>
               </div>
 
@@ -217,11 +271,28 @@ export default function ChecklistPage() {
                       />
                       <div className="flex flex-1 flex-col gap-2">
                         <div className="flex flex-col gap-1">
-                          <span>{item.text}</span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span>{item.text}</span>
+                            {item.critical && (
+                              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
+                                Critical
+                              </span>
+                            )}
+                          </div>
                           {item.timeframe && (
                             <div className="flex items-center gap-2 text-[11px] text-zinc-300">
                               <span className="rounded-full bg-zinc-800 px-2 py-0.5">
                                 Timeframe: {item.timeframe}
+                              </span>
+                              <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-sky-200">
+                                {item.weight} pts
+                              </span>
+                            </div>
+                          )}
+                          {!item.timeframe && (
+                            <div className="flex items-center gap-2 text-[11px] text-zinc-300">
+                              <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-sky-200">
+                                {item.weight} pts
                               </span>
                             </div>
                           )}
@@ -258,9 +329,9 @@ export default function ChecklistPage() {
                     </p>
                   </div>
                   <p className="text-xs text-zinc-500">
-                    Confluence:{" "}
+                    Weighted Score:{" "}
                     <span className="font-semibold text-sky-400">
-                      {confluence}%
+                      {score.weightedScorePercent}%
                     </span>
                   </p>
                 </div>

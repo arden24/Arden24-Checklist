@@ -52,11 +52,19 @@ export default function HomePage() {
   function normaliseChecklistItems(strategy: Strategy): ChecklistItem[] {
     return (strategy.checklist ?? []).map((item: any) =>
       typeof item === "string"
-        ? { text: item, timeframe: "", image: undefined }
+        ? {
+            text: item,
+            timeframe: "",
+            image: undefined,
+            weight: 1,
+            critical: false,
+          }
         : {
             text: item.text ?? "",
             timeframe: item.timeframe ?? "",
             image: item.image,
+            weight: Number.isFinite(Number(item.weight)) ? Number(item.weight) : 1,
+            critical: Boolean(item.critical),
           }
     );
   }
