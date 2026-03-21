@@ -3,8 +3,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
-import { fetchUserNotes, NOTE_CATEGORIES, type NoteCategory, upsertUserNote } from "@/lib/supabase/notes";
+import {
+  fetchUserNotes,
+  getNotesTableName,
+  NOTE_CATEGORIES,
+  type NoteCategory,
+  upsertUserNote,
+} from "@/lib/supabase/notes";
 import { logError } from "@/lib/log-error";
+
+function supabaseErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "message" in err) {
+    const m = (err as { message?: unknown }).message;
+    if (typeof m === "string" && m.trim()) return m;
+  }
+  if (err instanceof Error) return err.message;
+  return "Unknown error";
+}
 
 const CATEGORY_LABELS: Record<NoteCategory, string> = {
   weekly_market_interest: "Weekly Market Interest",
@@ -67,6 +82,7 @@ export default function NotesPage() {
       }
 
       try {
+        console.log("[notes] loading from table", getNotesTableName());
         const rows = await fetchUserNotes(supabase, safeUserId);
         if (cancelled) return;
 
@@ -78,6 +94,11 @@ export default function NotesPage() {
         setContentByCategory(next);
       } catch (err) {
         logError(err);
+        console.error("[notes] load failed", {
+          table: getNotesTableName(),
+          message: supabaseErrorMessage(err),
+          err,
+        });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -98,6 +119,12 @@ export default function NotesPage() {
     setSaving(true);
     setLastSavedAt(null);
     try {
+      console.log("[notes] save start", {
+        table: getNotesTableName(),
+        category: activeCategory,
+        userId: safeUserId,
+        contentLength: activeContent.length,
+      });
       const saved = await upsertUserNote(
         supabase,
         safeUserId,
@@ -108,7 +135,16 @@ export default function NotesPage() {
       alert("Notes saved.");
     } catch (err) {
       logError(err);
-      alert("Failed to save notes. Please try again.");
+      const msg = supabaseErrorMessage(err);
+      console.error("[notes] save failed", {
+        table: getNotesTableName(),
+        category: activeCategory,
+        message: msg,
+        err,
+      });
+      alert(
+        `Failed to save notes.\n\n${msg}\n\nIf this persists, check the browser console for [notes] logs and confirm your Supabase table name matches (default: notes).`
+      );
     } finally {
       setSaving(false);
     }
