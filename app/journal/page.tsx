@@ -9,6 +9,7 @@ import { getTradesForJournal, loadOpenTrades, type Trade } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
 import JournalCalendar from "@/components/JournalCalendar";
 import JournalDayDetail from "@/components/JournalDayDetail";
+import JournalAccountProgress from "@/components/JournalAccountProgress";
 import SummaryCard from "@/components/SummaryCard";
 import PerformanceInsights from "@/components/PerformanceInsights";
 
@@ -170,6 +171,8 @@ export default function JournalPage() {
           </div>
 
         </header>
+
+        <JournalAccountProgress />
 
         <section className="space-y-6">
           <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
