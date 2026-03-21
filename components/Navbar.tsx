@@ -101,12 +101,13 @@ export default function Navbar() {
       ),
     },
     {
-      href: "/stats",
-      label: "Stats",
+      href: "/notes",
+      label: "Notes",
       icon: (
-        <span className="flex h-5 w-5 items-center justify-center rounded-sm border border-amber-400/60 bg-amber-500/10">
-          <svg viewBox="0 0 20 20" className="h-3 w-3 text-amber-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M4 14v-4M8 14v-2M12 14v-6M16 14V6" />
+        <span className="flex h-5 w-5 items-center justify-center rounded-sm border border-sky-400/60 bg-sky-500/10">
+          <svg viewBox="0 0 20 20" className="h-3 w-3 text-sky-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M6 3h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+            <path d="M8 8h4M8 12h4" />
           </svg>
         </span>
       ),

@@ -33,7 +33,7 @@ export default function QuickAccess() {
   return (
     <div className="relative" ref={panelRef}>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-xl border border-gray-700 bg-black/95 py-2 shadow-xl backdrop-blur-sm">
+        <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-xl border border-gray-700 bg-zinc-950 py-2 shadow-xl">
           <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500">
             Quick access
           </p>
@@ -55,7 +55,7 @@ export default function QuickAccess() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="group flex items-center justify-center rounded-xl border border-white/10 bg-black/40 p-2 text-sky-400 transition hover:border-sky-400/60 hover:bg-sky-500/10"
+        className="group flex items-center justify-center rounded-xl border border-white/10 bg-zinc-950 p-2 text-sky-400 transition hover:border-sky-400/60 hover:bg-sky-500/10"
         aria-label={open ? "Close quick access" : "Quick access"}
         title="Quick access"
       >

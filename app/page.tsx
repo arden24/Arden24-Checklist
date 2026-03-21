@@ -215,10 +215,10 @@ export default function HomePage() {
               Journal
             </Link>
             <Link
-              href="/stats"
+              href="/notes"
               className="rounded-xl border border-white/20 px-4 py-2 font-medium text-white hover:bg-white/5"
             >
-              Stats
+              Notes
             </Link>
           </div>
         </div>

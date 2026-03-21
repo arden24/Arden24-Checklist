@@ -4,10 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchTrades } from "@/lib/supabase/trades";
-import { getTradesForJournal, type Trade } from "@/lib/journal";
+import { fetchOpenTrades } from "@/lib/supabase/open-trades";
+import { getTradesForJournal, loadOpenTrades, type Trade } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
 import JournalCalendar from "@/components/JournalCalendar";
 import JournalDayDetail from "@/components/JournalDayDetail";
+import SummaryCard from "@/components/SummaryCard";
+import PerformanceInsights from "@/components/PerformanceInsights";
 
 function dateKey(d: Date): string {
   const y = d.getFullYear();
@@ -26,18 +29,76 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+function formatDateLabel(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][(m ?? 1) - 1] ?? "";
+  return `${d ?? 0} ${month} ${y ?? ""}`;
+}
+
+function computeStats(closedTrades: Trade[], openTradesCount: number) {
+  const total = closedTrades.length;
+  const wins = closedTrades.filter((t) => t.result === "win" || t.pnl > 0).length;
+  const winRate = total ? Math.round((wins / total) * 100) : 0;
+  const netPnl = closedTrades.reduce((s, t) => s + t.pnl, 0);
+
+  const byDate: Record<string, number> = {};
+  closedTrades.forEach((t) => {
+    byDate[t.date] = (byDate[t.date] ?? 0) + t.pnl;
+  });
+  const dates = Object.entries(byDate);
+  const bestDay = dates.length ? dates.reduce((a, b) => (a[1] > b[1] ? a : b)) : null;
+  const worstDay = dates.length ? dates.reduce((a, b) => (a[1] < b[1] ? a : b)) : null;
+
+  const byAsset: Record<string, { pnl: number; count: number }> = {};
+  closedTrades.forEach((t) => {
+    const key = t.pair?.trim() || "—";
+    if (!byAsset[key]) byAsset[key] = { pnl: 0, count: 0 };
+    byAsset[key].pnl += t.pnl;
+    byAsset[key].count += 1;
+  });
+  const bestTradedAsset = Object.entries(byAsset).length
+    ? Object.entries(byAsset).reduce((a, b) => (a[1].pnl > b[1].pnl ? a : b))
+    : null;
+
+  const byMarket: Record<string, number> = {};
+  closedTrades.forEach((t) => {
+    const m = t.market?.trim() || "—";
+    byMarket[m] = (byMarket[m] ?? 0) + 1;
+  });
+  const mostTradedMarket = Object.entries(byMarket).length
+    ? Object.entries(byMarket).reduce((a, b) => (a[1] > b[1] ? a : b))[0]
+    : "—";
+
+  return {
+    total,
+    openTradesCount,
+    winRate,
+    netPnl,
+    netPnlStr: formatPnl(netPnl),
+    bestDay: bestDay ? { date: bestDay[0], pnl: bestDay[1] } : null,
+    worstDay: worstDay ? { date: worstDay[0], pnl: worstDay[1] } : null,
+    bestTradedAsset: bestTradedAsset ? { name: bestTradedAsset[0], pnl: bestTradedAsset[1].pnl } : null,
+    mostTradedMarket,
+  };
+}
+
 export default function JournalPage() {
   const { user } = useAuth();
   const supabase = createClient();
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [openTradesCount, setOpenTradesCount] = useState(0);
   const [viewDate, setViewDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const load = useCallback(() => {
     if (supabase && user) {
       fetchTrades(supabase).then(setTrades).catch(logError);
+      fetchOpenTrades(supabase)
+        .then((list) => setOpenTradesCount(list.length))
+        .catch(logError);
     } else {
       setTrades(getTradesForJournal(user?.id));
+      setOpenTradesCount(loadOpenTrades(user?.id).length);
     }
   }, [supabase, user]);
 
@@ -53,28 +114,13 @@ export default function JournalPage() {
     return trades.filter((t) => t.date.startsWith(prefix));
   }, [trades, year, month]);
 
-  const monthlyStats = useMemo(() => {
-    let pnl = 0;
-    let wins = 0;
-    let losses = 0;
-    tradesInMonth.forEach((t) => {
-      pnl += t.pnl;
-      if (t.pnl > 0) wins += 1;
-      else if (t.pnl < 0) losses += 1;
-    });
-    return {
-      pnl,
-      wins,
-      losses,
-      total: tradesInMonth.length,
-    };
-  }, [tradesInMonth]);
-
   const tradesOnSelectedDay = useMemo(() => {
     if (!selectedDate) return [];
     const key = dateKey(selectedDate);
     return trades.filter((t) => t.date === key);
   }, [trades, selectedDate]);
+
+  const stats = useMemo(() => computeStats(trades, openTradesCount), [trades, openTradesCount]);
 
   const goPrevMonth = () => {
     setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1));
@@ -96,7 +142,7 @@ export default function JournalPage() {
         <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold md:text-3xl">
-              Journal — {MONTH_NAMES[month]} {year}
+              Journal & Performance — {MONTH_NAMES[month]} {year}
             </h1>
             <div className="flex items-center gap-2">
               <button
@@ -123,41 +169,43 @@ export default function JournalPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-slate-800/90 bg-slate-950/70 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
-              <p className="text-xs text-zinc-500">Monthly P/L</p>
-              <p
-                className={`text-lg font-semibold ${
-                  monthlyStats.pnl > 0
-                    ? "text-sky-400"
-                    : monthlyStats.pnl < 0
-                    ? "text-red-400"
-                    : "text-zinc-300"
-                }`}
-              >
-                {formatPnl(monthlyStats.pnl)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-800/90 bg-slate-950/70 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
-              <p className="text-xs text-zinc-500">Wins</p>
-              <p className="text-lg font-semibold text-sky-400">
-                {monthlyStats.wins}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-800/90 bg-slate-950/70 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
-              <p className="text-xs text-zinc-500">Losses</p>
-              <p className="text-lg font-semibold text-red-400">
-                {monthlyStats.losses}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-800/90 bg-slate-950/70 p-3 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
-              <p className="text-xs text-zinc-500">Total Trades</p>
-              <p className="text-lg font-semibold text-white">
-                {monthlyStats.total}
-              </p>
-            </div>
-          </div>
         </header>
+
+        <section className="space-y-6">
+          <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <SummaryCard title="Total Trades" value={String(stats.total)} subtitle="Closed" />
+            <SummaryCard title="Live Trades" value={String(stats.openTradesCount)} subtitle="Current positions" />
+            <SummaryCard title="Net P/L" value={stats.netPnlStr} subtitle="Total from closed" />
+            <SummaryCard title="Win Rate" value={`${stats.winRate}%`} subtitle="Profitable trades" />
+          </section>
+
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryCard
+              title="Best Day"
+              value={stats.bestDay ? formatPnl(stats.bestDay.pnl) : "—"}
+              subtitle={stats.bestDay ? formatDateLabel(stats.bestDay.date) : "No data yet"}
+            />
+            <SummaryCard
+              title="Worst Day"
+              value={stats.worstDay ? formatPnl(stats.worstDay.pnl) : "—"}
+              subtitle={stats.worstDay ? formatDateLabel(stats.worstDay.date) : "No data yet"}
+            />
+            <SummaryCard
+              title="Best Traded Asset"
+              value={stats.bestTradedAsset ? stats.bestTradedAsset.name : "—"}
+              subtitle={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "No data yet"}
+            />
+            <SummaryCard
+              title="Most Traded Market"
+              value={stats.mostTradedMarket}
+              subtitle="By trade count"
+            />
+          </section>
+
+          <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+            <PerformanceInsights trades={trades} />
+          </section>
+        </section>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
           <JournalCalendar
