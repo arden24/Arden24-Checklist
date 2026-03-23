@@ -113,3 +113,17 @@ export async function insertTrade(
   console.log("[insertTrade] Insert succeeded, id:", (data as TradeRow)?.id);
   return rowToTrade(data as TradeRow);
 }
+
+export async function deleteTrade(
+  supabase: SupabaseClient,
+  userId: string,
+  tradeId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("trades")
+    .delete()
+    .eq("id", tradeId)
+    .eq("user_id", userId);
+
+  if (error) throw error;
+}

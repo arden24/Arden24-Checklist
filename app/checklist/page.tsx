@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TradeForm from "@/components/trade-form";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
@@ -8,6 +8,58 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchStrategies, type Strategy, type ChecklistItem } from "@/lib/supabase/strategies";
 import { logError } from "@/lib/log-error";
 import { computeWeightedChecklistScore } from "@/lib/checklist-scoring";
+import {
+  ARDEN24_CHECKLIST_DRAFT_KEY,
+  LEGACY_CHECKLIST_DRAFT_KEYS,
+} from "@/lib/session-draft-keys";
+
+type ChecklistDraft = { activeId: string; checked: boolean[] };
+
+function parseChecklistDraft(raw: string | null): ChecklistDraft | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!v || typeof v !== "object") return null;
+    const o = v as Record<string, unknown>;
+    if (typeof o.activeId !== "string") return null;
+    const checked = Array.isArray(o.checked) ? o.checked.map(Boolean) : [];
+    return { activeId: o.activeId, checked };
+  } catch {
+    return null;
+  }
+}
+
+function readChecklistDraftFromSession(): ChecklistDraft | null {
+  if (typeof window === "undefined") return null;
+  const keys = [ARDEN24_CHECKLIST_DRAFT_KEY, ...LEGACY_CHECKLIST_DRAFT_KEYS];
+  for (const key of keys) {
+    const draft = parseChecklistDraft(sessionStorage.getItem(key));
+    if (draft) {
+      if (key !== ARDEN24_CHECKLIST_DRAFT_KEY) {
+        try {
+          sessionStorage.setItem(ARDEN24_CHECKLIST_DRAFT_KEY, JSON.stringify(draft));
+          sessionStorage.removeItem(key);
+        } catch {
+          // ignore
+        }
+      }
+      return draft;
+    }
+  }
+  return null;
+}
+
+function writeChecklistDraftToSession(activeId: string, checked: boolean[]) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(
+      ARDEN24_CHECKLIST_DRAFT_KEY,
+      JSON.stringify({ activeId, checked })
+    );
+  } catch {
+    // ignore
+  }
+}
 
 export default function ChecklistPage() {
   const { user } = useAuth();
@@ -16,16 +68,16 @@ export default function ChecklistPage() {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [checked, setChecked] = useState<boolean[]>([]);
+  const draftBootstrapped = useRef(false);
+  const lastStrategyIdRef = useRef<string | null>(null);
+  /** After "Clear checklist", skip one persist pass so sessionStorage stays cleared. */
+  const skipNextChecklistPersistRef = useRef(false);
 
   const load = useCallback(() => {
     if (supabase && user) {
       fetchStrategies(supabase)
         .then((list) => {
           setStrategies(list);
-          if (list.length > 0) {
-            setActiveId(list[0].id);
-            setChecked(new Array(list[0].checklist.length).fill(false));
-          }
         })
         .catch((err) => {
           // If Supabase fetch fails (auth/RLS/offline), fall back to local storage
@@ -35,10 +87,6 @@ export default function ChecklistPage() {
               const raw = window.localStorage.getItem(strategiesKey);
               const parsed = raw ? (JSON.parse(raw) as Strategy[]) : [];
               setStrategies(parsed);
-              if (parsed.length > 0) {
-                setActiveId(parsed[0].id);
-                setChecked(new Array(parsed[0].checklist.length).fill(false));
-              }
             } catch {
               // ignore
             }
@@ -49,10 +97,6 @@ export default function ChecklistPage() {
         const raw = window.localStorage.getItem(strategiesKey);
         const parsed = raw ? (JSON.parse(raw) as Strategy[]) : [];
         setStrategies(parsed);
-        if (parsed.length > 0) {
-          setActiveId(parsed[0].id);
-          setChecked(new Array(parsed[0].checklist.length).fill(false));
-        }
       } catch {
         // ignore
       }
@@ -62,6 +106,44 @@ export default function ChecklistPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  /** First time we have strategies this mount: restore session draft or default first strategy. */
+  useEffect(() => {
+    if (strategies.length === 0) {
+      draftBootstrapped.current = false;
+      lastStrategyIdRef.current = null;
+      return;
+    }
+    if (draftBootstrapped.current) return;
+    draftBootstrapped.current = true;
+
+    const draft = readChecklistDraftFromSession();
+
+    if (draft && strategies.some((s) => s.id === draft.activeId)) {
+      const st = strategies.find((s) => s.id === draft.activeId)!;
+      const len = (st.checklist ?? []).length;
+      const arr =
+        draft.checked.length === len
+          ? draft.checked
+          : Array.from({ length: len }, (_, i) => Boolean(draft.checked[i]));
+      setActiveId(draft.activeId);
+      setChecked(arr);
+    } else {
+      const first = strategies[0];
+      setActiveId(first.id);
+      setChecked(new Array((first.checklist ?? []).length).fill(false));
+    }
+  }, [strategies]);
+
+  /** Persist checklist draft (session tab only). */
+  useEffect(() => {
+    if (strategies.length === 0 || !activeId || typeof window === "undefined") return;
+    if (skipNextChecklistPersistRef.current) {
+      skipNextChecklistPersistRef.current = false;
+      return;
+    }
+    writeChecklistDraftToSession(activeId, checked);
+  }, [activeId, checked, strategies.length]);
 
   const activeStrategy = useMemo(
     () => strategies.find((s) => s.id === activeId) ?? null,
@@ -89,9 +171,30 @@ export default function ChecklistPage() {
     );
   }, [activeStrategy]);
 
+  /** Resize or reset checkboxes when switching strategy (not on first bind after session restore). */
   useEffect(() => {
     if (!activeStrategy) return;
-    setChecked(new Array(checklistItems.length).fill(false));
+    const id = activeStrategy.id;
+    const len = checklistItems.length;
+    const prev = lastStrategyIdRef.current;
+
+    if (prev === id) {
+      setChecked((p) => {
+        if (p.length === len) return p;
+        return Array.from({ length: len }, (_, i) => p[i] ?? false);
+      });
+      return;
+    }
+
+    lastStrategyIdRef.current = id;
+    if (prev !== null) {
+      setChecked(new Array(len).fill(false));
+    } else {
+      setChecked((p) => {
+        if (p.length === len) return p;
+        return Array.from({ length: len }, (_, i) => p[i] ?? false);
+      });
+    }
   }, [activeStrategy?.id, checklistItems.length]);
 
   const scorableItems = useMemo(
@@ -112,8 +215,24 @@ export default function ChecklistPage() {
     setChecked((prev) => {
       const next = [...prev];
       next[index] = !next[index];
+      if (activeId) writeChecklistDraftToSession(activeId, next);
       return next;
     });
+  }
+
+  function handleClearChecklistDraft() {
+    if (!activeStrategy) return;
+    const len = checklistItems.length;
+    skipNextChecklistPersistRef.current = true;
+    setChecked(new Array(len).fill(false));
+    try {
+      sessionStorage.removeItem(ARDEN24_CHECKLIST_DRAFT_KEY);
+      for (const k of LEGACY_CHECKLIST_DRAFT_KEYS) {
+        sessionStorage.removeItem(k);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   return (
@@ -246,14 +365,25 @@ export default function ChecklistPage() {
             </section>
 
             <section className="space-y-6 rounded-2xl border border-white/10 bg-slate-950/80 p-5">
-              <div>
-                <h2 className="text-sm font-semibold text-white">
-                  Strategy Checklist
-                </h2>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Tick the conditions. Some are critical and will gate your
-                  final setup status.
-                </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-white">
+                    Strategy Checklist
+                  </h2>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Tick the conditions. Some are critical and will gate your
+                    final setup status.
+                  </p>
+                </div>
+                {activeStrategy && checklistItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearChecklistDraft}
+                    className="shrink-0 rounded-xl border border-white/15 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:border-sky-400/50 hover:text-sky-200"
+                  >
+                    Clear checklist
+                  </button>
+                )}
               </div>
 
               <div className="space-y-3 text-sm text-zinc-100">

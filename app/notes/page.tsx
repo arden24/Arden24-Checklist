@@ -11,6 +11,25 @@ import {
   upsertUserNote,
 } from "@/lib/supabase/notes";
 import { logError } from "@/lib/log-error";
+import { sessionFormFullKey } from "@/lib/hooks/useSessionFormState";
+
+const NOTES_DRAFT_KEY = sessionFormFullKey("page:notes");
+
+type NotesDraft = {
+  contentByCategory: Partial<Record<NoteCategory, string>>;
+  activeCategory?: NoteCategory;
+};
+
+function parseNotesDraft(raw: string | null): NotesDraft | null {
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!v || typeof v !== "object") return null;
+    return v as NotesDraft;
+  } catch {
+    return null;
+  }
+}
 
 function supabaseErrorMessage(err: unknown): string {
   if (err && typeof err === "object" && "message" in err) {
@@ -91,6 +110,25 @@ export default function NotesPage() {
           next[n.category] = n.content ?? "";
         });
 
+        // Merge session draft so unsaved edits survive navigation (same tab session).
+        if (typeof window !== "undefined") {
+          const draft = parseNotesDraft(sessionStorage.getItem(NOTES_DRAFT_KEY));
+          if (draft?.contentByCategory) {
+            for (const cat of NOTE_CATEGORIES) {
+              const local = draft.contentByCategory[cat];
+              if (typeof local === "string" && local.length > 0) {
+                next[cat] = local;
+              }
+            }
+          }
+          if (
+            draft?.activeCategory &&
+            NOTE_CATEGORIES.includes(draft.activeCategory)
+          ) {
+            setActiveCategory(draft.activeCategory);
+          }
+        }
+
         setContentByCategory(next);
       } catch (err) {
         logError(err);
@@ -109,6 +147,18 @@ export default function NotesPage() {
       cancelled = true;
     };
   }, [supabase, safeUserId]);
+
+  useEffect(() => {
+    if (loading || typeof window === "undefined" || !safeUserId) return;
+    try {
+      sessionStorage.setItem(
+        NOTES_DRAFT_KEY,
+        JSON.stringify({ contentByCategory, activeCategory })
+      );
+    } catch {
+      // ignore
+    }
+  }, [contentByCategory, activeCategory, loading, safeUserId]);
 
   const activeContent = contentByCategory[activeCategory] ?? "";
 
@@ -132,6 +182,11 @@ export default function NotesPage() {
         activeContent
       );
       setLastSavedAt(saved.updatedAt);
+      try {
+        sessionStorage.removeItem(NOTES_DRAFT_KEY);
+      } catch {
+        // ignore
+      }
       alert("Notes saved.");
     } catch (err) {
       logError(err);

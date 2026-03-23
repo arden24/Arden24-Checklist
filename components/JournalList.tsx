@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchTrades } from "@/lib/supabase/trades";
-import { loadTrades, type Trade } from "@/lib/journal";
+import { cancelClosedTrade, loadTrades, type Trade } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
+import { dispatchTradesUpdated } from "@/lib/trades-updated";
 
 function formatPnl(t: Trade): string {
   const sym = t.currency === "GBP" ? "£" : t.currency === "EUR" ? "€" : "$";
@@ -37,6 +38,25 @@ export default function JournalList() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleCancelTrade = useCallback(
+    async (tradeId: string) => {
+      const ok = window.confirm(
+        "Cancel this closed trade?\n\nIt will be removed from your journal, dashboard stats, and performance history."
+      );
+      if (!ok) return;
+
+      try {
+        await cancelClosedTrade(tradeId, user?.id, supabase);
+        setTrades((prev) => prev.filter((t) => t.id !== tradeId));
+        dispatchTradesUpdated();
+      } catch (err) {
+        logError(err);
+        alert("Failed to cancel trade. Please try again.");
+      }
+    },
+    [supabase, user]
+  );
 
   const recent = trades.slice(0, 8);
 
@@ -94,6 +114,13 @@ export default function JournalList() {
                 {t.rr && (
                   <p className="mt-0.5 text-xs text-zinc-400">R:R {t.rr}</p>
                 )}
+                <button
+                  type="button"
+                  onClick={() => handleCancelTrade(t.id)}
+                  className="mt-2 inline-flex rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-200 hover:bg-red-500/20"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           ))

@@ -4,6 +4,7 @@ import type { Trade } from "@/lib/journal";
 
 type JournalTradeRowProps = {
   trade: Trade;
+  onCancelTrade?: (trade: Trade) => void;
 };
 
 function formatPnl(pnl: number, currency?: string): string {
@@ -12,7 +13,10 @@ function formatPnl(pnl: number, currency?: string): string {
   return `${sign}${sym}${Math.abs(pnl).toFixed(2)}`;
 }
 
-export default function JournalTradeRow({ trade }: JournalTradeRowProps) {
+export default function JournalTradeRow({
+  trade,
+  onCancelTrade,
+}: JournalTradeRowProps) {
   const isWin = trade.pnl > 0;
   const isLoss = trade.pnl < 0;
   const isBreakeven = trade.pnl === 0;
@@ -65,6 +69,19 @@ export default function JournalTradeRow({ trade }: JournalTradeRowProps) {
           {formatPnl(trade.pnl, trade.currency)}
         </p>
       </div>
+
+      {onCancelTrade && (
+        <div className="mt-3 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={() => onCancelTrade(trade)}
+            className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/20"
+          >
+            Cancel trade
+          </button>
+        </div>
+      )}
+
       {description && (
         <div className="mt-2 rounded-lg bg-black/40 px-2.5 py-2 text-xs text-zinc-300">
           <span className="font-medium text-zinc-400">Notes: </span>

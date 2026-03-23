@@ -289,3 +289,33 @@ export async function closeTrade(
   }
   removeOpenTrade(open.id, userId);
 }
+
+/**
+ * Cancel a closed trade (remove from dashboard/journal/performance).
+ * - Supabase: deletes the row from `trades`.
+ * - Offline: removes from the localStorage trade list for the user.
+ */
+export async function cancelClosedTrade(
+  tradeId: string,
+  userId?: string | null,
+  supabase?: import("@supabase/supabase-js").SupabaseClient | null
+): Promise<void> {
+  // Supabase as source of truth
+  if (supabase && userId) {
+    const { deleteTrade } = await import("@/lib/supabase/trades");
+    await deleteTrade(supabase, userId, tradeId);
+    return;
+  }
+
+  // Dev / offline fallback
+  if (typeof window === "undefined") return;
+  try {
+    const key = getTradesKey(userId);
+    const raw = window.localStorage.getItem(key);
+    const parsed = raw ? (JSON.parse(raw) as Trade[]) : [];
+    const next = Array.isArray(parsed) ? parsed.filter((t) => t.id !== tradeId) : [];
+    window.localStorage.setItem(key, JSON.stringify(next));
+  } catch {
+    // ignore localStorage issues
+  }
+}

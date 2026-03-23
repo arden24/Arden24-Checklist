@@ -21,6 +21,7 @@ import { fetchOpenTrades } from "@/lib/supabase/open-trades";
 import type { Trade } from "@/lib/supabase/trades";
 import { loadOpenTrades } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
+import { ARDEN24_TRADES_UPDATED_EVENT } from "@/lib/trades-updated";
 
 const MONTH_ABBREV = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -106,6 +107,16 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadTradesData();
+  }, [loadTradesData]);
+
+  useEffect(() => {
+    const onUpdated = () => {
+      loadTradesData();
+    };
+    window.addEventListener(ARDEN24_TRADES_UPDATED_EVENT, onUpdated);
+    return () => {
+      window.removeEventListener(ARDEN24_TRADES_UPDATED_EVENT, onUpdated);
+    };
   }, [loadTradesData]);
 
   const loadStrategies = useCallback(() => {

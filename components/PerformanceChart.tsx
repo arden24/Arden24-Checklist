@@ -7,6 +7,7 @@ import { fetchTrades } from "@/lib/supabase/trades";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
 import { loadTrades, loadOpenTrades, type Trade, type OpenTrade } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
+import { ARDEN24_TRADES_UPDATED_EVENT } from "@/lib/trades-updated";
 
 type Timeframe = "days" | "weeks" | "months" | "quarters" | "years";
 
@@ -162,6 +163,16 @@ export default function PerformanceChart() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    const onUpdated = () => {
+      load();
+    };
+    window.addEventListener(ARDEN24_TRADES_UPDATED_EVENT, onUpdated);
+    return () => {
+      window.removeEventListener(ARDEN24_TRADES_UPDATED_EVENT, onUpdated);
+    };
   }, [load]);
 
   const chartData = useMemo(

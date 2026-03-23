@@ -4,11 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import {
+  type AccountProgress,
   type AccountProgressType,
   fetchAccountProgress,
   saveAccountProgress,
 } from "@/lib/supabase/account-progress";
 import { logError } from "@/lib/log-error";
+import {
+  sessionFormFullKey,
+  useSessionFormState,
+} from "@/lib/hooks/useSessionFormState";
 
 const ACCOUNT_OPTIONS: { value: AccountProgressType; label: string; hint: string }[] = [
   { value: "challenge", label: "Challenge", hint: "Track balance needed to pass the evaluation." },
@@ -70,22 +75,67 @@ function computeMetrics(
   return { profitSoFar, remaining, progressPercent, statusBadge, typeBadge };
 }
 
-export default function JournalAccountProgress() {
-  const { user } = useAuth();
-  const supabase = createClient();
-  const userId = user?.id;
+type AccountProgressFormState = {
+  accountType: AccountProgressType;
+  startingStr: string;
+  currentStr: string;
+  targetStr: string;
+  targetLabel: string;
+  targetNotes: string;
+  expanded: boolean;
+};
 
-  const [accountType, setAccountType] = useState<AccountProgressType>("challenge");
-  const [startingStr, setStartingStr] = useState("");
-  const [currentStr, setCurrentStr] = useState("");
-  const [targetStr, setTargetStr] = useState("");
-  const [targetLabel, setTargetLabel] = useState("");
-  const [targetNotes, setTargetNotes] = useState("");
+function mapRowToFormState(row: AccountProgress | null): AccountProgressFormState {
+  if (!row) {
+    return {
+      accountType: "challenge",
+      startingStr: "",
+      currentStr: "",
+      targetStr: "",
+      targetLabel: "",
+      targetNotes: "",
+      expanded: true,
+    };
+  }
+  return {
+    accountType: row.accountType,
+    startingStr: row.startingBalance ? String(row.startingBalance) : "",
+    currentStr: row.currentBalance ? String(row.currentBalance) : "",
+    targetStr: row.targetAmount ? String(row.targetAmount) : "",
+    targetLabel: row.targetLabel,
+    targetNotes: row.targetNotes,
+    expanded: true,
+  };
+}
 
-  const [loading, setLoading] = useState(true);
+type JournalAccountProgressInnerProps = {
+  userId: string;
+  supabase: NonNullable<ReturnType<typeof createClient>>;
+  initialFromServer: AccountProgressFormState;
+};
+
+function JournalAccountProgressInner({
+  userId,
+  supabase,
+  initialFromServer,
+}: JournalAccountProgressInnerProps) {
+  const [form, setForm, resetFormDraft] = useSessionFormState<AccountProgressFormState>(
+    `page:journal-account-progress:${userId}`,
+    initialFromServer
+  );
+
+  const {
+    accountType,
+    startingStr,
+    currentStr,
+    targetStr,
+    targetLabel,
+    targetNotes,
+    expanded,
+  } = form;
+
   const [saving, setSaving] = useState(false);
   const [savedHint, setSavedHint] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(true);
 
   const starting = useMemo(() => parseMoneyInput(startingStr), [startingStr]);
   const current = useMemo(() => parseMoneyInput(currentStr), [currentStr]);
@@ -96,39 +146,8 @@ export default function JournalAccountProgress() {
     [accountType, starting, current, target]
   );
 
-  const load = useCallback(async () => {
-    if (!supabase || !userId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const row = await fetchAccountProgress(supabase, userId);
-      if (row) {
-        setAccountType(row.accountType);
-        setStartingStr(row.startingBalance ? String(row.startingBalance) : "");
-        setCurrentStr(row.currentBalance ? String(row.currentBalance) : "");
-        setTargetStr(row.targetAmount ? String(row.targetAmount) : "");
-        setTargetLabel(row.targetLabel);
-        setTargetNotes(row.targetNotes);
-      }
-    } catch (e) {
-      logError(e);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, userId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabase || !userId) {
-      alert("Sign in to save account progress.");
-      return;
-    }
     setSaving(true);
     setSavedHint(null);
     try {
@@ -140,6 +159,21 @@ export default function JournalAccountProgress() {
         targetLabel,
         targetNotes,
       });
+      const savedSnapshot: AccountProgressFormState = {
+        accountType,
+        startingStr: starting ? String(starting) : "",
+        currentStr: current ? String(current) : "",
+        targetStr: target ? String(target) : "",
+        targetLabel,
+        targetNotes,
+        expanded,
+      };
+      setForm(savedSnapshot);
+      try {
+        sessionStorage.removeItem(sessionFormFullKey(`page:journal-account-progress:${userId}`));
+      } catch {
+        // ignore
+      }
       setSavedHint("Saved");
       setTimeout(() => setSavedHint(null), 2500);
     } catch (err) {
@@ -148,26 +182,6 @@ export default function JournalAccountProgress() {
     } finally {
       setSaving(false);
     }
-  }
-
-  if (!user) {
-    return (
-      <section className="rounded-2xl border border-white/10 bg-slate-950/70 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.85)]">
-        <h2 className="text-lg font-semibold text-white">Account progress</h2>
-        <p className="mt-2 text-sm text-zinc-500">Sign in to track funding targets and milestones here.</p>
-      </section>
-    );
-  }
-
-  if (!supabase) {
-    return (
-      <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
-        <h2 className="text-lg font-semibold text-white">Account progress</h2>
-        <p className="mt-2 text-sm text-zinc-400">
-          Supabase is not configured. Add environment keys to enable saving progress.
-        </p>
-      </section>
-    );
   }
 
   const activeHint = ACCOUNT_OPTIONS.find((o) => o.value === accountType)?.hint ?? "";
@@ -202,7 +216,7 @@ export default function JournalAccountProgress() {
             </span>
             <button
               type="button"
-              onClick={() => setExpanded((e) => !e)}
+              onClick={() => setForm((f) => ({ ...f, expanded: !f.expanded }))}
               className="rounded-full border border-white/15 px-3 py-1 text-xs font-medium text-zinc-300 hover:border-sky-400/50 hover:text-white"
             >
               {expanded ? "Collapse" : "Edit details"}
@@ -244,100 +258,176 @@ export default function JournalAccountProgress() {
 
       {expanded && (
         <form onSubmit={handleSave} className="space-y-5 px-4 py-5 sm:px-6">
-          {loading ? (
-            <p className="text-sm text-zinc-500">Loading your settings…</p>
-          ) : (
-            <>
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-zinc-400">Account type</label>
-                  <select
-                    value={accountType}
-                    onChange={(e) => setAccountType(e.target.value as AccountProgressType)}
-                    className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none focus:border-sky-500/50"
-                  >
-                    {ACCOUNT_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-2 text-xs text-zinc-500">{activeHint}</p>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-zinc-400">Starting balance</label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={startingStr}
-                      onChange={(e) => setStartingStr(e.target.value)}
-                      placeholder="50000"
-                      className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-zinc-400">Current balance</label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={currentStr}
-                      onChange={(e) => setCurrentStr(e.target.value)}
-                      placeholder="51200"
-                      className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-zinc-400">Target amount</label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={targetStr}
-                      onChange={(e) => setTargetStr(e.target.value)}
-                      placeholder="52000"
-                      className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500/50"
-                    />
-                  </div>
-                </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-xs font-medium text-zinc-400">Account type</label>
+              <select
+                value={accountType}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, accountType: e.target.value as AccountProgressType }))
+                }
+                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white outline-none focus:border-sky-500/50"
+              >
+                {ACCOUNT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-zinc-500">{activeHint}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="mb-2 block text-xs font-medium text-zinc-400">Starting balance</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={startingStr}
+                  onChange={(e) => setForm((f) => ({ ...f, startingStr: e.target.value }))}
+                  placeholder="50000"
+                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500/50"
+                />
               </div>
+              <div>
+                <label className="mb-2 block text-xs font-medium text-zinc-400">Current balance</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={currentStr}
+                  onChange={(e) => setForm((f) => ({ ...f, currentStr: e.target.value }))}
+                  placeholder="51200"
+                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500/50"
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-medium text-zinc-400">Target amount</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={targetStr}
+                  onChange={(e) => setForm((f) => ({ ...f, targetStr: e.target.value }))}
+                  placeholder="52000"
+                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500/50"
+                />
+              </div>
+            </div>
+          </div>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-zinc-400">Target / milestone name</label>
-                  <input
-                    type="text"
-                    value={targetLabel}
-                    onChange={(e) => setTargetLabel(e.target.value)}
-                    placeholder="e.g. Phase 1 pass, 4% growth, first payout"
-                    className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500/50"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-xs font-medium text-zinc-400">Notes (optional)</label>
-                  <textarea
-                    value={targetNotes}
-                    onChange={(e) => setTargetNotes(e.target.value)}
-                    placeholder="Rules, drawdown limits, or reminders…"
-                    rows={3}
-                    className="w-full resize-none rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500/50"
-                  />
-                </div>
-              </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-xs font-medium text-zinc-400">Target / milestone name</label>
+              <input
+                type="text"
+                value={targetLabel}
+                onChange={(e) => setForm((f) => ({ ...f, targetLabel: e.target.value }))}
+                placeholder="e.g. Phase 1 pass, 4% growth, first payout"
+                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500/50"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-medium text-zinc-400">Notes (optional)</label>
+              <textarea
+                value={targetNotes}
+                onChange={(e) => setForm((f) => ({ ...f, targetNotes: e.target.value }))}
+                placeholder="Rules, drawdown limits, or reminders…"
+                rows={3}
+                className="w-full resize-none rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-sky-500/50"
+              />
+            </div>
+          </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-sky-400 disabled:opacity-50"
-                >
-                  {saving ? "Saving…" : "Save progress"}
-                </button>
-                {savedHint && <span className="text-sm text-emerald-400">{savedHint}</span>}
-              </div>
-            </>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={resetFormDraft}
+              className="rounded-xl border border-white/20 px-5 py-2.5 text-sm font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
+            >
+              Reset draft
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-sky-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-sky-400 disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save progress"}
+            </button>
+            {savedHint && <span className="text-sm text-emerald-400">{savedHint}</span>}
+          </div>
         </form>
       )}
     </section>
+  );
+}
+
+export default function JournalAccountProgress() {
+  const { user } = useAuth();
+  const supabase = createClient();
+  const userId = user?.id;
+
+  const [serverRow, setServerRow] = useState<AccountProgress | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!supabase || !userId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const row = await fetchAccountProgress(supabase, userId);
+      setServerRow(row);
+    } catch (e) {
+      logError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, userId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const initialFromServer = useMemo(() => mapRowToFormState(serverRow), [serverRow]);
+
+  if (!user) {
+    return (
+      <section className="rounded-2xl border border-white/10 bg-slate-950/70 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.85)]">
+        <h2 className="text-lg font-semibold text-white">Account progress</h2>
+        <p className="mt-2 text-sm text-zinc-500">Sign in to track funding targets and milestones here.</p>
+      </section>
+    );
+  }
+
+  if (!supabase) {
+    return (
+      <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5">
+        <h2 className="text-lg font-semibold text-white">Account progress</h2>
+        <p className="mt-2 text-sm text-zinc-400">
+          Supabase is not configured. Add environment keys to enable saving progress.
+        </p>
+      </section>
+    );
+  }
+
+  if (loading) {
+    return (
+      <section className="overflow-hidden rounded-2xl border border-sky-500/25 bg-gradient-to-br from-slate-950 via-slate-950 to-sky-950/30 shadow-[0_20px_70px_rgba(15,23,42,0.95)]">
+        <div className="border-b border-white/10 bg-black/30 px-4 py-4 sm:px-6">
+          <h2 className="text-lg font-semibold text-white">Account progress</h2>
+          <p className="mt-2 text-sm text-zinc-500">Loading your settings…</p>
+        </div>
+      </section>
+    );
+  }
+
+  const signedInUserId = user.id;
+
+  return (
+    <JournalAccountProgressInner
+      key={signedInUserId}
+      userId={signedInUserId}
+      supabase={supabase}
+      initialFromServer={initialFromServer}
+    />
   );
 }

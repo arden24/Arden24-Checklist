@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useMemo, useState, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/log-error";
+import { useSessionFormState } from "@/lib/hooks/useSessionFormState";
 import {
   fetchStrategyById,
   updateStrategy,
@@ -31,105 +32,103 @@ function normaliseChecklist(
   );
 }
 
-export default function EditStrategyPage() {
-  const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const { user } = useAuth();
-  const supabase = createClient();
-  const strategiesKey = getStrategiesKey(user?.id);
-  const [strategy, setStrategy] = useState<Strategy | null>(null);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [market, setMarket] = useState("");
-  const [timeframes, setTimeframes] = useState("");
-  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
+type EditStrategyFormSnapshot = {
+  name: string;
+  description: string;
+  market: string;
+  timeframes: string;
+  checklistItems: ChecklistItem[];
+};
 
-  useEffect(() => {
-    const id = params.id;
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    if (supabase && user) {
-      fetchStrategyById(supabase, id)
-        .then((s) => {
-          if (s) {
-            setStrategy(s);
-            setName(s.name);
-            setDescription(s.description);
-            setMarket(s.market);
-            setTimeframes(s.timeframes);
-            setChecklistItems(normaliseChecklist(s.checklist));
-          }
-        })
-        .catch(logError)
-        .finally(() => setLoading(false));
-    } else if (typeof window !== "undefined") {
-      try {
-        const raw = window.localStorage.getItem(strategiesKey);
-        const parsed = raw ? (JSON.parse(raw) as Strategy[]) : [];
-        const found = parsed.find((s) => s.id === id);
-        if (found) {
-          setStrategy(found);
-          setName(found.name);
-          setDescription(found.description);
-          setMarket(found.market);
-          setTimeframes(found.timeframes);
-          setChecklistItems(normaliseChecklist(found.checklist));
-        }
-      } catch {
-        // ignore
-      }
-      setLoading(false);
-    }
-  }, [params.id, strategiesKey, supabase, user]);
+function snapshotFromStrategy(s: Strategy): EditStrategyFormSnapshot {
+  return {
+    name: s.name,
+    description: s.description,
+    market: s.market,
+    timeframes: s.timeframes,
+    checklistItems: normaliseChecklist(s.checklist),
+  };
+}
+
+type EditStrategyFormLoadedProps = {
+  strategy: Strategy;
+  strategiesKey: string;
+  supabase: ReturnType<typeof createClient>;
+  user: ReturnType<typeof useAuth>["user"];
+};
+
+function EditStrategyFormLoaded({
+  strategy,
+  strategiesKey,
+  supabase,
+  user,
+}: EditStrategyFormLoadedProps) {
+  const router = useRouter();
+  const initial = useMemo(() => snapshotFromStrategy(strategy), [strategy]);
+  const [form, setForm, resetFormDraft] = useSessionFormState<EditStrategyFormSnapshot>(
+    `page:strategy-edit:${strategy.id}`,
+    initial
+  );
+  const { name, description, market, timeframes, checklistItems } = form;
+  const [isSaving, setIsSaving] = useState(false);
 
   function updateChecklistItem(index: number, value: string) {
-    setChecklistItems((items) =>
-      items.map((item, i) =>
+    setForm((f) => ({
+      ...f,
+      checklistItems: f.checklistItems.map((item, i) =>
         i === index ? { ...item, text: value } : item
-      )
-    );
+      ),
+    }));
   }
 
   function addChecklistItem() {
-    setChecklistItems((items) => [
-      ...items,
-      { text: "", timeframe: "", image: undefined, weight: 1, critical: false },
-    ]);
+    setForm((f) => ({
+      ...f,
+      checklistItems: [
+        ...f.checklistItems,
+        { text: "", timeframe: "", image: undefined, weight: 1, critical: false },
+      ],
+    }));
   }
 
   function removeChecklistItem(index: number) {
-    setChecklistItems((items) =>
-      items.length === 1 ? items : items.filter((_, i) => i !== index)
-    );
+    setForm((f) => ({
+      ...f,
+      checklistItems:
+        f.checklistItems.length === 1
+          ? f.checklistItems
+          : f.checklistItems.filter((_, i) => i !== index),
+    }));
   }
 
   function updateChecklistTimeframe(index: number, value: string) {
-    setChecklistItems((items) =>
-      items.map((item, i) =>
+    setForm((f) => ({
+      ...f,
+      checklistItems: f.checklistItems.map((item, i) =>
         i === index ? { ...item, timeframe: value } : item
-      )
-    );
+      ),
+    }));
   }
 
   function updateChecklistWeight(index: number, value: string) {
     const nextWeight = Number(value);
-    setChecklistItems((items) =>
-      items.map((item, i) =>
+    setForm((f) => ({
+      ...f,
+      checklistItems: f.checklistItems.map((item, i) =>
         i === index
           ? { ...item, weight: Number.isFinite(nextWeight) ? nextWeight : 1 }
           : item
-      )
-    );
+      ),
+    }));
   }
 
   function updateChecklistCritical(index: number, value: boolean) {
-    setChecklistItems((items) =>
-      items.map((item, i) => (i === index ? { ...item, critical: value } : item))
-    );
+    setForm((f) => ({
+      ...f,
+      checklistItems: f.checklistItems.map((item, i) =>
+        i === index ? { ...item, critical: value } : item
+      ),
+    }));
   }
 
   function handleChecklistImageChange(
@@ -142,18 +141,18 @@ export default function EditStrategyPage() {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      setChecklistItems((items) =>
-        items.map((item, i) =>
+      setForm((f) => ({
+        ...f,
+        checklistItems: f.checklistItems.map((item, i) =>
           i === index ? { ...item, image: result } : item
-        )
-      );
+        ),
+      }));
     };
     reader.readAsDataURL(file);
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!strategy) return;
     if (!name.trim()) {
       alert("Please add a strategy name.");
       return;
@@ -194,6 +193,7 @@ export default function EditStrategyPage() {
         window.localStorage.setItem(strategiesKey, JSON.stringify(next));
       }
 
+      resetFormDraft();
       router.push("/strategies");
     } catch (err) {
       logError(err);
@@ -202,6 +202,222 @@ export default function EditStrategyPage() {
       setIsSaving(false);
     }
   }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="mt-8 space-y-6 rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-lg"
+    >
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-zinc-200">
+          Strategy name
+        </label>
+        <input
+          value={name}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-zinc-200">
+          Description
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          rows={4}
+          className="w-full resize-none rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-zinc-200">
+            Market
+          </label>
+          <select
+            value={market}
+            onChange={(e) => setForm((f) => ({ ...f, market: e.target.value }))}
+            className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none"
+          >
+            <option value="">Select market</option>
+            <option value="Forex">Forex</option>
+            <option value="Stocks">Stocks</option>
+            <option value="Indices">Indices</option>
+            <option value="Commodities">Commodities</option>
+            <option value="Cryptocurrencies">Cryptocurrencies</option>
+            <option value="Bonds">Bonds</option>
+            <option value="Futures">Futures</option>
+            <option value="Options">Options</option>
+            <option value="ETFs">ETFs</option>
+            <option value="CFDs">CFDs</option>
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-zinc-200">
+            Timeframes (summary)
+          </label>
+          <input
+            value={timeframes}
+            onChange={(e) => setForm((f) => ({ ...f, timeframes: e.target.value }))}
+            placeholder="e.g. 1H, 15M, 5M"
+            className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-zinc-200">
+              Checklist items
+            </p>
+            <p className="text-xs text-zinc-400">
+              Update the exact conditions you want to see before taking a
+              trade.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={addChecklistItem}
+            className="rounded-full border border-sky-500/60 px-3 py-1 text-xs font-semibold text-sky-400 hover:bg-sky-500/10"
+          >
+            + Add item
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {checklistItems.map((item, index) => (
+            <div key={index} className="space-y-2 rounded-xl bg-zinc-900/60 p-3">
+              <div className="flex flex-wrap gap-2">
+                <input
+                  value={item.text}
+                  onChange={(e) =>
+                    updateChecklistItem(index, e.target.value)
+                  }
+                  placeholder={`Checklist item ${index + 1}`}
+                  className="flex-1 rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
+                />
+                <input
+                  value={item.timeframe}
+                  onChange={(e) =>
+                    updateChecklistTimeframe(index, e.target.value)
+                  }
+                  placeholder="TF (e.g. 1H)"
+                  className="w-24 rounded-xl bg-zinc-800 px-2 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
+                />
+                <input
+                  type="number"
+                  value={item.weight}
+                  onChange={(e) =>
+                    updateChecklistWeight(index, e.target.value)
+                  }
+                  placeholder="Weight"
+                  min={0}
+                  step={1}
+                  className="w-24 rounded-xl bg-zinc-800 px-2 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
+                />
+                <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={item.critical}
+                    onChange={(e) =>
+                      updateChecklistCritical(index, e.target.checked)
+                    }
+                    className="h-4 w-4 rounded border-zinc-600 bg-slate-950 text-sky-500 focus:ring-0"
+                  />
+                  Critical
+                </label>
+                <button
+                  type="button"
+                  onClick={() => removeChecklistItem(index)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                  aria-label="Remove checklist item"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
+                  <span className="rounded-lg border border-sky-500/60 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300">
+                    {item.image ? "Change screenshot" : "Add screenshot"}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleChecklistImageChange(index, e)}
+                  />
+                </label>
+                {item.timeframe && (
+                  <span className="rounded-full bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300">
+                    TF: {item.timeframe}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap justify-end gap-3 border-t border-white/5 pt-4">
+        <button
+          type="button"
+          onClick={resetFormDraft}
+          className="rounded-xl border border-white/20 px-5 py-3 text-sm font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
+        >
+          Reset draft
+        </button>
+        <button
+          type="submit"
+          disabled={isSaving}
+          className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black disabled:opacity-70"
+        >
+          {isSaving ? "Saving..." : "Save changes"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export default function EditStrategyPage() {
+  const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const { user } = useAuth();
+  const supabase = createClient();
+  const strategiesKey = getStrategiesKey(user?.id);
+  const [strategy, setStrategy] = useState<Strategy | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const id = params.id;
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    if (supabase && user) {
+      fetchStrategyById(supabase, id)
+        .then((s) => {
+          if (s) setStrategy(s);
+        })
+        .catch(logError)
+        .finally(() => setLoading(false));
+    } else if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(strategiesKey);
+        const parsed = raw ? (JSON.parse(raw) as Strategy[]) : [];
+        const found = parsed.find((s) => s.id === id);
+        if (found) setStrategy(found);
+      } catch {
+        // ignore
+      }
+      setLoading(false);
+    }
+  }, [params.id, strategiesKey, supabase, user]);
 
   if (loading || !strategy) {
     return (
@@ -233,178 +449,14 @@ export default function EditStrategyPage() {
           </p>
         </header>
 
-        <form
-          onSubmit={handleSubmit}
-          className="mt-8 space-y-6 rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-lg"
-        >
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-zinc-200">
-              Strategy name
-            </label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-zinc-200">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              className="w-full resize-none rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-zinc-200">
-                Market
-              </label>
-              <select
-                value={market}
-                onChange={(e) => setMarket(e.target.value)}
-                className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none"
-              >
-                <option value="">Select market</option>
-                <option value="Forex">Forex</option>
-                <option value="Stocks">Stocks</option>
-                <option value="Indices">Indices</option>
-                <option value="Commodities">Commodities</option>
-                <option value="Cryptocurrencies">Cryptocurrencies</option>
-                <option value="Bonds">Bonds</option>
-                <option value="Futures">Futures</option>
-                <option value="Options">Options</option>
-                <option value="ETFs">ETFs</option>
-                <option value="CFDs">CFDs</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-zinc-200">
-                Timeframes (summary)
-              </label>
-              <input
-                value={timeframes}
-                onChange={(e) => setTimeframes(e.target.value)}
-                placeholder="e.g. 1H, 15M, 5M"
-                className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-zinc-200">
-                  Checklist items
-                </p>
-                <p className="text-xs text-zinc-400">
-                  Update the exact conditions you want to see before taking a
-                  trade.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={addChecklistItem}
-                className="rounded-full border border-sky-500/60 px-3 py-1 text-xs font-semibold text-sky-400 hover:bg-sky-500/10"
-              >
-                + Add item
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {checklistItems.map((item, index) => (
-                <div key={index} className="space-y-2 rounded-xl bg-zinc-900/60 p-3">
-                  <div className="flex flex-wrap gap-2">
-                    <input
-                      value={item.text}
-                      onChange={(e) =>
-                        updateChecklistItem(index, e.target.value)
-                      }
-                      placeholder={`Checklist item ${index + 1}`}
-                      className="flex-1 rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
-                    />
-                    <input
-                      value={item.timeframe}
-                      onChange={(e) =>
-                        updateChecklistTimeframe(index, e.target.value)
-                      }
-                      placeholder="TF (e.g. 1H)"
-                      className="w-24 rounded-xl bg-zinc-800 px-2 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
-                    />
-                    <input
-                      type="number"
-                      value={item.weight}
-                      onChange={(e) =>
-                        updateChecklistWeight(index, e.target.value)
-                      }
-                      placeholder="Weight"
-                      min={0}
-                      step={1}
-                      className="w-24 rounded-xl bg-zinc-800 px-2 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
-                    />
-                    <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                      <input
-                        type="checkbox"
-                        checked={item.critical}
-                        onChange={(e) =>
-                          updateChecklistCritical(index, e.target.checked)
-                        }
-                        className="h-4 w-4 rounded border-zinc-600 bg-slate-950 text-sky-500 focus:ring-0"
-                      />
-                      Critical
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => removeChecklistItem(index)}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-                      aria-label="Remove checklist item"
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3">
-                    <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                      <span className="rounded-lg border border-sky-500/60 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300">
-                        {item.image ? "Change screenshot" : "Add screenshot"}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleChecklistImageChange(index, e)}
-                      />
-                    </label>
-                    {item.timeframe && (
-                      <span className="rounded-full bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300">
-                        TF: {item.timeframe}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-end border-t border-white/5 pt-4">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black disabled:opacity-70"
-            >
-              {isSaving ? "Saving..." : "Save changes"}
-            </button>
-          </div>
-        </form>
+        <EditStrategyFormLoaded
+          key={strategy.id}
+          strategy={strategy}
+          strategiesKey={strategiesKey}
+          supabase={supabase}
+          user={user}
+        />
       </div>
     </main>
   );
 }
-

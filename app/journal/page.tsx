@@ -5,13 +5,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchTrades } from "@/lib/supabase/trades";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
-import { getTradesForJournal, loadOpenTrades, type Trade } from "@/lib/journal";
+import {
+  cancelClosedTrade,
+  getTradesForJournal,
+  loadOpenTrades,
+  type Trade,
+} from "@/lib/journal";
 import { logError } from "@/lib/log-error";
 import JournalCalendar from "@/components/JournalCalendar";
 import JournalDayDetail from "@/components/JournalDayDetail";
 import JournalAccountProgress from "@/components/JournalAccountProgress";
 import SummaryCard from "@/components/SummaryCard";
 import PerformanceInsights from "@/components/PerformanceInsights";
+import { dispatchTradesUpdated } from "@/lib/trades-updated";
 
 function dateKey(d: Date): string {
   const y = d.getFullYear();
@@ -106,6 +112,26 @@ export default function JournalPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleCancelTrade = useCallback(
+    async (trade: Trade) => {
+      if (!trade?.id) return;
+      const ok = window.confirm(
+        "Cancel this closed trade?\n\nThis will remove it from your journal, dashboard stats, and performance history."
+      );
+      if (!ok) return;
+
+      try {
+        await cancelClosedTrade(trade.id, user?.id, supabase);
+        setTrades((prev) => prev.filter((t) => t.id !== trade.id));
+        dispatchTradesUpdated();
+      } catch (err) {
+        logError(err);
+        alert("Failed to cancel trade. Please try again.");
+      }
+    },
+    [supabase, user]
+  );
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -224,6 +250,7 @@ export default function JournalPage() {
               <JournalDayDetail
                 date={selectedDate}
                 trades={tradesOnSelectedDay}
+                onCancelTrade={handleCancelTrade}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-slate-950/80 p-8 text-center">

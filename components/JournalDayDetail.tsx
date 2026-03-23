@@ -7,6 +7,7 @@ type JournalDayDetailProps = {
   date: Date;
   trades: Trade[];
   dayNotes?: string;
+  onCancelTrade?: (trade: Trade) => void;
 };
 
 function formatPnl(pnl: number, currency?: string): string {
@@ -28,6 +29,7 @@ export default function JournalDayDetail({
   date,
   trades,
   dayNotes,
+  onCancelTrade,
 }: JournalDayDetailProps) {
   const totalPnl = trades.reduce((sum, t) => sum + t.pnl, 0);
   const wins = trades.filter((t) => t.result === "win" || t.pnl > 0).length;
@@ -91,7 +93,11 @@ export default function JournalDayDetail({
         ) : (
           <div className="space-y-2">
             {trades.map((trade) => (
-              <JournalTradeRow key={trade.id} trade={trade} />
+              <JournalTradeRow
+                key={trade.id}
+                trade={trade}
+                onCancelTrade={onCancelTrade}
+              />
             ))}
           </div>
         )}

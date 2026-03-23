@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchOpenTrades, deleteOpenTrade } from "@/lib/supabase/open-trades";
@@ -10,6 +10,7 @@ import {
   removeOpenTrade,
   type OpenTrade,
 } from "@/lib/journal";
+import { useSessionFormState } from "@/lib/hooks/useSessionFormState";
 import { logError } from "@/lib/log-error";
 
 function formatDate(key: string): string {
@@ -45,14 +46,16 @@ type CloseFormState = {
   rating: number | null;
 };
 
-const initialCloseState: CloseFormState = {
+/** Persisted in sessionStorage (screenshot kept in memory only — can be large). */
+type CloseFormDraftPersisted = Omit<CloseFormState, "screenshot">;
+
+const CLOSE_DRAFT_INITIAL: CloseFormDraftPersisted = {
   openId: null,
   result: "win",
   pnl: "",
   currency: "GBP",
   thoughts: "",
   rr: "",
-  screenshot: null,
   rating: null,
 };
 
@@ -60,7 +63,16 @@ export default function OpenTradesPage() {
   const { user } = useAuth();
   const supabase = createClient();
   const [openTrades, setOpenTrades] = useState<OpenTrade[]>([]);
-  const [closeForm, setCloseForm] = useState<CloseFormState>(initialCloseState);
+  const [draft, setDraft, resetCloseDraft] = useSessionFormState<CloseFormDraftPersisted>(
+    "page:open-trades-close",
+    CLOSE_DRAFT_INITIAL
+  );
+  const [screenshot, setScreenshot] = useState<string | null>(null);
+
+  const closeForm = useMemo<CloseFormState>(
+    () => ({ ...draft, screenshot }),
+    [draft, screenshot]
+  );
 
   const loadOpenTradesList = useCallback(() => {
     if (supabase && user) {
@@ -107,7 +119,8 @@ export default function OpenTradesPage() {
         supabase
       );
       loadOpenTradesList();
-      setCloseForm(initialCloseState);
+      resetCloseDraft();
+      setScreenshot(null);
     } catch (err: unknown) {
       logError(err);
       const message = err instanceof Error ? err.message : String(err);
@@ -117,7 +130,8 @@ export default function OpenTradesPage() {
   };
 
   const handleCancelClose = () => {
-    setCloseForm(initialCloseState);
+    resetCloseDraft();
+    setScreenshot(null);
   };
 
   const handleRemove = async (id: string) => {
@@ -185,12 +199,10 @@ export default function OpenTradesPage() {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        setCloseForm({
-                          ...initialCloseState,
-                          openId: open.id,
-                        })
-                      }
+                      onClick={() => {
+                        setDraft({ ...CLOSE_DRAFT_INITIAL, openId: open.id });
+                        setScreenshot(null);
+                      }}
                       className="rounded-xl bg-sky-500/20 px-3 py-1.5 text-sm font-medium text-sky-300 hover:bg-sky-500/30"
                     >
                       Journal outcome
@@ -227,7 +239,7 @@ export default function OpenTradesPage() {
                         <select
                           value={closeForm.result}
                           onChange={(e) =>
-                            setCloseForm((f) => ({
+                            setDraft((f) => ({
                               ...f,
                               result: e.target.value as "win" | "loss" | "breakeven",
                             }))
@@ -248,7 +260,7 @@ export default function OpenTradesPage() {
                           step="0.01"
                           value={closeForm.pnl}
                           onChange={(e) =>
-                            setCloseForm((f) => ({ ...f, pnl: e.target.value }))
+                            setDraft((f) => ({ ...f, pnl: e.target.value }))
                           }
                           placeholder="0.00"
                           className="w-full rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white"
@@ -262,7 +274,7 @@ export default function OpenTradesPage() {
                         <select
                           value={closeForm.currency}
                           onChange={(e) =>
-                            setCloseForm((f) => ({
+                            setDraft((f) => ({
                               ...f,
                               currency: e.target.value as "USD" | "GBP" | "EUR",
                             }))
@@ -282,7 +294,7 @@ export default function OpenTradesPage() {
                           type="text"
                           value={closeForm.rr}
                           onChange={(e) =>
-                            setCloseForm((f) => ({ ...f, rr: e.target.value }))
+                            setDraft((f) => ({ ...f, rr: e.target.value }))
                           }
                           placeholder="2:1"
                           className="w-full rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white"
@@ -296,7 +308,7 @@ export default function OpenTradesPage() {
                       <textarea
                         value={closeForm.thoughts}
                         onChange={(e) =>
-                          setCloseForm((f) => ({ ...f, thoughts: e.target.value }))
+                          setDraft((f) => ({ ...f, thoughts: e.target.value }))
                         }
                         placeholder="What happened? What did you learn?"
                         className="w-full resize-none rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white"
@@ -313,7 +325,7 @@ export default function OpenTradesPage() {
                             key={n}
                             type="button"
                             onClick={() =>
-                              setCloseForm((f) => ({
+                              setDraft((f) => ({
                                 ...f,
                                 rating: f.rating === n ? null : n,
                               }))
@@ -345,10 +357,7 @@ export default function OpenTradesPage() {
                               if (!file) return;
                               const reader = new FileReader();
                               reader.onload = () =>
-                                setCloseForm((f) => ({
-                                  ...f,
-                                  screenshot: reader.result as string,
-                                }));
+                                setScreenshot(reader.result as string);
                               reader.readAsDataURL(file);
                             }}
                           />
@@ -362,9 +371,7 @@ export default function OpenTradesPage() {
                             />
                             <button
                               type="button"
-                              onClick={() =>
-                                setCloseForm((f) => ({ ...f, screenshot: null }))
-                              }
+                              onClick={() => setScreenshot(null)}
                               className="absolute -right-1 -top-1 rounded-full bg-red-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white"
                             >
                               ×

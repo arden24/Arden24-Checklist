@@ -5,6 +5,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { insertOpenTrade } from "@/lib/supabase/open-trades";
 import { addOpenTrade, type OpenTrade } from "@/lib/journal";
+import { useArden24SessionDraft } from "@/lib/hooks/useArden24SessionDraft";
+import {
+  ARDEN24_TRADE_ENTRY_DRAFT_KEY,
+  LEGACY_TRADE_ENTRY_DRAFT_KEYS,
+} from "@/lib/session-draft-keys";
 import { logError } from "@/lib/log-error";
 
 function todayKey(): string {
@@ -23,19 +28,42 @@ function computeRiskReward(entry: number, stopLoss: number, takeProfit: number):
   return `1:${ratio.toFixed(1)}`;
 }
 
+/** One shared draft for all “Log trade” instances (checklist + dashboard). */
+type TradeFormFields = {
+  market: string;
+  pair: string;
+  lotSize: string;
+  entryPrice: string;
+  stopLoss: string;
+  takeProfit: string;
+  session: string;
+  direction: "" | "Buy" | "Sell";
+  notes: string;
+};
+
+const TRADE_FORM_INITIAL: TradeFormFields = {
+  market: "",
+  pair: "",
+  lotSize: "",
+  entryPrice: "",
+  stopLoss: "",
+  takeProfit: "",
+  session: "",
+  direction: "",
+  notes: "",
+};
+
 export default function TradeForm() {
   const { user } = useAuth();
   const supabase = createClient();
-  const [market, setMarket] = useState("");
-  const [pair, setPair] = useState("");
-  const [lotSize, setLotSize] = useState("");
-  const [entryPrice, setEntryPrice] = useState("");
-  const [stopLoss, setStopLoss] = useState("");
-  const [takeProfit, setTakeProfit] = useState("");
-  const [session, setSession] = useState("");
-  const [direction, setDirection] = useState<"Buy" | "Sell" | "">("");
-  const [notes, setNotes] = useState("");
+  const [form, setForm, resetForm] = useArden24SessionDraft<TradeFormFields>(
+    ARDEN24_TRADE_ENTRY_DRAFT_KEY,
+    TRADE_FORM_INITIAL,
+    LEGACY_TRADE_ENTRY_DRAFT_KEYS
+  );
   const [submitting, setSubmitting] = useState(false);
+
+  const { market, pair, lotSize, entryPrice, stopLoss, takeProfit, session, direction, notes } = form;
 
   const entryNum = parseFloat(entryPrice);
   const slNum = parseFloat(stopLoss);
@@ -70,7 +98,7 @@ export default function TradeForm() {
           user?.id
         );
       }
-      handleReset();
+      resetForm();
       alert("Trade opened. Close it from the Live Trades tab when done.");
     } catch (err) {
       logError(err);
@@ -78,18 +106,6 @@ export default function TradeForm() {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  function handleReset() {
-    setMarket("");
-    setPair("");
-    setLotSize("");
-    setEntryPrice("");
-    setStopLoss("");
-    setTakeProfit("");
-    setSession("");
-    setDirection("");
-    setNotes("");
   }
 
   return (
@@ -101,7 +117,7 @@ export default function TradeForm() {
 
       <select
         value={market}
-        onChange={(e) => setMarket(e.target.value)}
+        onChange={(e) => setForm((f) => ({ ...f, market: e.target.value }))}
         className="mb-3 w-full rounded bg-zinc-800 p-3 text-sm text-white"
       >
         <option value="">Select market type</option>
@@ -120,14 +136,14 @@ export default function TradeForm() {
       <input
         placeholder="Pair / instrument (e.g. EURUSD, XAUUSD)"
         value={pair}
-        onChange={(e) => setPair(e.target.value)}
+        onChange={(e) => setForm((f) => ({ ...f, pair: e.target.value }))}
         className="mb-3 w-full rounded bg-zinc-800 p-3"
       />
 
       <input
         placeholder="Lot size"
         value={lotSize}
-        onChange={(e) => setLotSize(e.target.value)}
+        onChange={(e) => setForm((f) => ({ ...f, lotSize: e.target.value }))}
         className="mb-3 w-full rounded bg-zinc-800 p-3"
       />
 
@@ -139,7 +155,7 @@ export default function TradeForm() {
             step="any"
             placeholder="Entry"
             value={entryPrice}
-            onChange={(e) => setEntryPrice(e.target.value)}
+            onChange={(e) => setForm((f) => ({ ...f, entryPrice: e.target.value }))}
             className="w-full rounded bg-zinc-800 p-3 text-sm text-white"
           />
           <input
@@ -147,7 +163,7 @@ export default function TradeForm() {
             step="any"
             placeholder="Stop loss"
             value={stopLoss}
-            onChange={(e) => setStopLoss(e.target.value)}
+            onChange={(e) => setForm((f) => ({ ...f, stopLoss: e.target.value }))}
             className="w-full rounded bg-zinc-800 p-3 text-sm text-white"
           />
           <input
@@ -155,7 +171,7 @@ export default function TradeForm() {
             step="any"
             placeholder="Take profit"
             value={takeProfit}
-            onChange={(e) => setTakeProfit(e.target.value)}
+            onChange={(e) => setForm((f) => ({ ...f, takeProfit: e.target.value }))}
             className="w-full rounded bg-zinc-800 p-3 text-sm text-white"
           />
         </div>
@@ -169,7 +185,7 @@ export default function TradeForm() {
       <div className="mb-3 grid grid-cols-2 gap-2">
         <select
           value={session}
-          onChange={(e) => setSession(e.target.value)}
+          onChange={(e) => setForm((f) => ({ ...f, session: e.target.value }))}
           className="w-full rounded bg-zinc-800 p-3 text-sm text-white"
         >
           <option value="">Session</option>
@@ -179,7 +195,9 @@ export default function TradeForm() {
         </select>
         <select
           value={direction}
-          onChange={(e) => setDirection(e.target.value as "Buy" | "Sell" | "")}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, direction: e.target.value as "" | "Buy" | "Sell" }))
+          }
           className="w-full rounded bg-zinc-800 p-3 text-sm text-white"
         >
           <option value="">Direction</option>
@@ -191,7 +209,7 @@ export default function TradeForm() {
       <textarea
         placeholder="Entry notes (optional)"
         value={notes}
-        onChange={(e) => setNotes(e.target.value)}
+        onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
         className="mb-4 w-full resize-none rounded bg-zinc-800 p-3 text-sm"
         rows={2}
       />
@@ -202,7 +220,7 @@ export default function TradeForm() {
         </button>
         <button
           type="button"
-          onClick={handleReset}
+          onClick={resetForm}
           className="rounded border border-white/20 px-4 py-3 font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
         >
           Reset

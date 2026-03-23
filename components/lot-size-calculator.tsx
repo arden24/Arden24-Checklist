@@ -1,7 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { calculateLotSize, calculateRiskAmount } from "@/lib/lot-size";
+import { useArden24SessionDraft } from "@/lib/hooks/useArden24SessionDraft";
+import {
+  ARDEN24_LOT_SIZE_DRAFT_KEY,
+  LEGACY_LOT_SIZE_DRAFT_KEYS,
+} from "@/lib/session-draft-keys";
 
 const pipValues: Record<string, number> = {
   EURUSD: 10,
@@ -21,15 +26,45 @@ const CURRENCIES = [
 
 type RiskInputMode = "percent" | "amount";
 
+type LotCalcSessionState = {
+  market: string;
+  accountCurrency: "GBP" | "USD" | "EUR";
+  accountSize: number;
+  riskInputMode: RiskInputMode;
+  riskPercent: number;
+  riskAmountInput: number;
+  asset: string;
+  stopLossPips: number;
+};
+
+const LOT_CALC_INITIAL: LotCalcSessionState = {
+  market: "",
+  accountCurrency: "GBP",
+  accountSize: 10000,
+  riskInputMode: "percent",
+  riskPercent: 1,
+  riskAmountInput: 100,
+  asset: "EURUSD",
+  stopLossPips: 20,
+};
+
 export default function LotSizeCalculator() {
-  const [market, setMarket] = useState("");
-  const [accountCurrency, setAccountCurrency] = useState<"GBP" | "USD" | "EUR">("GBP");
-  const [accountSize, setAccountSize] = useState(10000);
-  const [riskInputMode, setRiskInputMode] = useState<RiskInputMode>("percent");
-  const [riskPercent, setRiskPercent] = useState(1);
-  const [riskAmountInput, setRiskAmountInput] = useState(100);
-  const [asset, setAsset] = useState("EURUSD");
-  const [stopLossPips, setStopLossPips] = useState(20);
+  const [calc, setCalc, resetCalc] = useArden24SessionDraft<LotCalcSessionState>(
+    ARDEN24_LOT_SIZE_DRAFT_KEY,
+    LOT_CALC_INITIAL,
+    LEGACY_LOT_SIZE_DRAFT_KEYS
+  );
+
+  const {
+    market,
+    accountCurrency,
+    accountSize,
+    riskInputMode,
+    riskPercent,
+    riskAmountInput,
+    asset,
+    stopLossPips,
+  } = calc;
 
   const pipValuePerStandardLot = pipValues[asset] ?? 10;
   const currency = CURRENCIES.find((c) => c.value === accountCurrency) ?? CURRENCIES[0];
@@ -58,20 +93,22 @@ export default function LotSizeCalculator() {
   );
 
   function handleReset() {
-    setAccountSize(10000);
-    setRiskPercent(1);
-    setRiskAmountInput(100);
-    setAsset("EURUSD");
-    setStopLossPips(20);
+    resetCalc();
   }
 
   function toggleRiskInputMode() {
     if (riskInputMode === "percent") {
-      setRiskAmountInput(riskAmount);
-      setRiskInputMode("amount");
+      setCalc((c) => ({
+        ...c,
+        riskAmountInput: riskAmount,
+        riskInputMode: "amount",
+      }));
     } else {
-      setRiskPercent(effectiveRiskPercent);
-      setRiskInputMode("percent");
+      setCalc((c) => ({
+        ...c,
+        riskPercent: effectiveRiskPercent,
+        riskInputMode: "percent",
+      }));
     }
   }
 
@@ -87,7 +124,7 @@ export default function LotSizeCalculator() {
           <span className={labelClass}>Market</span>
           <select
             value={market}
-            onChange={(e) => setMarket(e.target.value)}
+            onChange={(e) => setCalc((c) => ({ ...c, market: e.target.value }))}
             className={inputClass}
           >
             <option value="">Select market type</option>
@@ -110,7 +147,12 @@ export default function LotSizeCalculator() {
           <span className={labelClass}>Account currency</span>
           <select
             value={accountCurrency}
-            onChange={(e) => setAccountCurrency(e.target.value as "GBP" | "USD" | "EUR")}
+            onChange={(e) =>
+              setCalc((c) => ({
+                ...c,
+                accountCurrency: e.target.value as "GBP" | "USD" | "EUR",
+              }))
+            }
             className={inputClass}
           >
             {CURRENCIES.map((c) => (
@@ -126,7 +168,7 @@ export default function LotSizeCalculator() {
           <input
             type="number"
             value={accountSize}
-            onChange={(e) => setAccountSize(Number(e.target.value))}
+            onChange={(e) => setCalc((c) => ({ ...c, accountSize: Number(e.target.value) }))}
             className={inputClass}
           />
         </label>
@@ -149,7 +191,7 @@ export default function LotSizeCalculator() {
               type="number"
               step="0.1"
               value={riskPercent}
-              onChange={(e) => setRiskPercent(Number(e.target.value))}
+              onChange={(e) => setCalc((c) => ({ ...c, riskPercent: Number(e.target.value) }))}
               className={inputClass}
             />
           ) : (
@@ -157,7 +199,9 @@ export default function LotSizeCalculator() {
               type="number"
               step="0.01"
               value={riskAmountInput}
-              onChange={(e) => setRiskAmountInput(Number(e.target.value))}
+              onChange={(e) =>
+                setCalc((c) => ({ ...c, riskAmountInput: Number(e.target.value) }))
+              }
               className={inputClass}
             />
           )}
@@ -167,7 +211,7 @@ export default function LotSizeCalculator() {
           <span className={labelClass}>Asset</span>
           <select
             value={asset}
-            onChange={(e) => setAsset(e.target.value)}
+            onChange={(e) => setCalc((c) => ({ ...c, asset: e.target.value }))}
             className={inputClass}
           >
             {Object.keys(pipValues).map((pair) => (
@@ -184,7 +228,7 @@ export default function LotSizeCalculator() {
             type="number"
             step="0.1"
             value={stopLossPips}
-            onChange={(e) => setStopLossPips(Number(e.target.value))}
+            onChange={(e) => setCalc((c) => ({ ...c, stopLossPips: Number(e.target.value) }))}
             className={inputClass}
           />
         </label>
@@ -196,7 +240,8 @@ export default function LotSizeCalculator() {
             Risk amount {riskInputMode === "amount" ? "" : `(${effectiveRiskPercent.toFixed(1)}%)`}
           </p>
           <p className="text-2xl font-bold text-white">
-            {currency.symbol}{riskAmount.toFixed(2)}
+            {currency.symbol}
+            {riskAmount.toFixed(2)}
           </p>
         </div>
 

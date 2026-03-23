@@ -7,6 +7,7 @@ import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
 import { insertStrategy } from "@/lib/supabase/strategies";
 import type { ChecklistItem, Strategy } from "@/lib/supabase/strategies";
+import { useSessionFormState } from "@/lib/hooks/useSessionFormState";
 import { logError } from "@/lib/log-error";
 
 function loadStrategies(key: string): Strategy[] {
@@ -25,68 +26,97 @@ function saveStrategies(strategies: Strategy[], key: string) {
   window.localStorage.setItem(key, JSON.stringify(strategies));
 }
 
+type StrategyFormSnapshot = {
+  name: string;
+  description: string;
+  market: string;
+  timeframes: string;
+  checklistItems: ChecklistItem[];
+};
+
+const STRATEGY_NEW_INITIAL: StrategyFormSnapshot = {
+  name: "",
+  description: "",
+  market: "",
+  timeframes: "",
+  checklistItems: [
+    { text: "", timeframe: "", image: undefined, weight: 1, critical: false },
+  ],
+};
+
 export default function StrategyForm() {
   const router = useRouter();
   const { user } = useAuth();
   const supabase = createClient();
   const strategiesKey = getStrategiesKey(user?.id);
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [market, setMarket] = useState("");
-  const [timeframes, setTimeframes] = useState("");
-  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([
-    { text: "", timeframe: "", image: undefined, weight: 1, critical: false },
-  ]);
+  const [form, setForm, resetFormDraft] = useSessionFormState<StrategyFormSnapshot>(
+    "page:strategy-new",
+    STRATEGY_NEW_INITIAL
+  );
+  const { name, description, market, timeframes, checklistItems } = form;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function updateChecklistItem(index: number, value: string) {
-    setChecklistItems((items) =>
-      items.map((item, i) =>
+    setForm((f) => ({
+      ...f,
+      checklistItems: f.checklistItems.map((item, i) =>
         i === index ? { ...item, text: value } : item
-      )
-    );
+      ),
+    }));
   }
 
   function addChecklistItem() {
-    setChecklistItems((items) => [
-      ...items,
-      { text: "", timeframe: "", image: undefined, weight: 1, critical: false },
-    ]);
+    setForm((f) => ({
+      ...f,
+      checklistItems: [
+        ...f.checklistItems,
+        { text: "", timeframe: "", image: undefined, weight: 1, critical: false },
+      ],
+    }));
   }
 
   function removeChecklistItem(index: number) {
-    setChecklistItems((items) =>
-      items.length === 1 ? items : items.filter((_, i) => i !== index)
-    );
+    setForm((f) => ({
+      ...f,
+      checklistItems:
+        f.checklistItems.length === 1
+          ? f.checklistItems
+          : f.checklistItems.filter((_, i) => i !== index),
+    }));
   }
 
   function updateChecklistTimeframe(index: number, value: string) {
-    setChecklistItems((items) =>
-      items.map((item, i) =>
+    setForm((f) => ({
+      ...f,
+      checklistItems: f.checklistItems.map((item, i) =>
         i === index ? { ...item, timeframe: value } : item
-      )
-    );
+      ),
+    }));
   }
 
   function updateChecklistWeight(index: number, value: string) {
     const nextWeight = Number(value);
-    setChecklistItems((items) =>
-      items.map((item, i) =>
+    setForm((f) => ({
+      ...f,
+      checklistItems: f.checklistItems.map((item, i) =>
         i === index
           ? {
               ...item,
               weight: Number.isFinite(nextWeight) ? nextWeight : 1,
             }
           : item
-      )
-    );
+      ),
+    }));
   }
 
   function updateChecklistCritical(index: number, value: boolean) {
-    setChecklistItems((items) =>
-      items.map((item, i) => (i === index ? { ...item, critical: value } : item))
-    );
+    setForm((f) => ({
+      ...f,
+      checklistItems: f.checklistItems.map((item, i) =>
+        i === index ? { ...item, critical: value } : item
+      ),
+    }));
   }
 
   function handleChecklistImageChange(
@@ -99,11 +129,12 @@ export default function StrategyForm() {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      setChecklistItems((items) =>
-        items.map((item, i) =>
+      setForm((f) => ({
+        ...f,
+        checklistItems: f.checklistItems.map((item, i) =>
           i === index ? { ...item, image: result } : item
-        )
-      );
+        ),
+      }));
     };
     reader.readAsDataURL(file);
   }
@@ -159,6 +190,7 @@ export default function StrategyForm() {
         saveStrategies([nextStrategy, ...existing], strategiesKey);
       }
 
+      resetFormDraft();
       router.push("/strategies");
     } catch (err) {
       logError(err);
@@ -179,7 +211,7 @@ export default function StrategyForm() {
         </label>
         <input
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           placeholder="London breakout, NY session mean reversion..."
           className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
         />
@@ -191,7 +223,7 @@ export default function StrategyForm() {
         </label>
         <textarea
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           placeholder="Outline the core idea of the setup, entry logic, and what you are trying to capture."
           rows={4}
           className="w-full resize-none rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
@@ -203,7 +235,7 @@ export default function StrategyForm() {
           <label className="text-sm font-medium text-zinc-200">Market</label>
           <select
             value={market}
-            onChange={(e) => setMarket(e.target.value)}
+            onChange={(e) => setForm((f) => ({ ...f, market: e.target.value }))}
             className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none"
           >
             <option value="">Select market</option>
@@ -226,7 +258,7 @@ export default function StrategyForm() {
           </label>
           <input
             value={timeframes}
-            onChange={(e) => setTimeframes(e.target.value)}
+            onChange={(e) => setForm((f) => ({ ...f, timeframes: e.target.value }))}
             placeholder="e.g. HTF: 4H / 1H · Execution: 5m / 1m"
             className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500"
           />
@@ -254,7 +286,7 @@ export default function StrategyForm() {
         </div>
 
         <div className="space-y-2">
-              {checklistItems.map((item, index) => (
+          {checklistItems.map((item, index) => (
             <div key={index} className="space-y-2 rounded-xl bg-zinc-900/60 p-3">
               <div className="flex flex-wrap gap-2">
                 <input
@@ -329,15 +361,23 @@ export default function StrategyForm() {
           This app is for journaling, discipline, and self-review only. Nothing
           here is financial advice or a recommendation to trade.
         </p>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black disabled:opacity-70"
-        >
-          {isSubmitting ? "Saving strategy..." : "Save strategy"}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={resetFormDraft}
+            className="rounded-xl border border-white/20 px-5 py-3 text-sm font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
+          >
+            Reset draft
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black disabled:opacity-70"
+          >
+            {isSubmitting ? "Saving strategy..." : "Save strategy"}
+          </button>
+        </div>
       </div>
     </form>
   );
 }
-
