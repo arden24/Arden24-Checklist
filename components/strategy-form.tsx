@@ -1,13 +1,18 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
 import { insertStrategy } from "@/lib/supabase/strategies";
-import type { ChecklistItem, Strategy } from "@/lib/supabase/strategies";
-import { useSessionFormState } from "@/lib/hooks/useSessionFormState";
+import type { Strategy } from "@/lib/supabase/strategies";
+import {
+  clearStrategyDraftFromSession,
+  readStrategyDraftForNewPage,
+  writeStrategyDraftToSession,
+  type StrategyFormFields,
+} from "@/lib/strategy-session-draft";
 import { logError } from "@/lib/log-error";
 
 function loadStrategies(key: string): Strategy[] {
@@ -26,15 +31,7 @@ function saveStrategies(strategies: Strategy[], key: string) {
   window.localStorage.setItem(key, JSON.stringify(strategies));
 }
 
-type StrategyFormSnapshot = {
-  name: string;
-  description: string;
-  market: string;
-  timeframes: string;
-  checklistItems: ChecklistItem[];
-};
-
-const STRATEGY_NEW_INITIAL: StrategyFormSnapshot = {
+const STRATEGY_NEW_INITIAL: StrategyFormFields = {
   name: "",
   description: "",
   market: "",
@@ -50,12 +47,33 @@ export default function StrategyForm() {
   const supabase = createClient();
   const strategiesKey = getStrategiesKey(user?.id);
 
-  const [form, setForm, resetFormDraft] = useSessionFormState<StrategyFormSnapshot>(
-    "page:strategy-new",
-    STRATEGY_NEW_INITIAL
-  );
+  const [form, setForm] = useState<StrategyFormFields>(STRATEGY_NEW_INITIAL);
+  const [hydrated, setHydrated] = useState(false);
+  const skipNextStrategyPersistRef = useRef(false);
   const { name, description, market, timeframes, checklistItems } = form;
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const fromSession = readStrategyDraftForNewPage(STRATEGY_NEW_INITIAL);
+    if (fromSession) setForm(fromSession);
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+    if (skipNextStrategyPersistRef.current) {
+      skipNextStrategyPersistRef.current = false;
+      return;
+    }
+    writeStrategyDraftToSession({ mode: "new", ...form });
+  }, [hydrated, form]);
+
+  const resetFormDraft = useCallback(() => {
+    skipNextStrategyPersistRef.current = true;
+    setForm(STRATEGY_NEW_INITIAL);
+    clearStrategyDraftFromSession();
+  }, []);
 
   function updateChecklistItem(index: number, value: string) {
     setForm((f) => ({

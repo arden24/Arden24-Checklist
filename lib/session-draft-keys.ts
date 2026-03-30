@@ -7,7 +7,13 @@ export const ARDEN24_TRADE_ENTRY_DRAFT_KEY = "arden24:trade-entry:draft" as cons
 export const ARDEN24_LOT_SIZE_DRAFT_KEY = "arden24:lot-size:draft" as const;
 export const ARDEN24_CHECKLIST_DRAFT_KEY = "arden24:checklist:draft" as const;
 
+/** Strategy create/edit form drafts (session tab only). */
+export const ARDEN24_STRATEGY_DRAFT_KEY = "arden24_strategy_draft" as const;
+
 /** Previous keys (arden24:session:v1:…) — read once and migrate to the keys above. */
 export const LEGACY_TRADE_ENTRY_DRAFT_KEYS = ["arden24:session:v1:form:trade-log"] as const;
 export const LEGACY_LOT_SIZE_DRAFT_KEYS = ["arden24:session:v1:page:lot-calculator"] as const;
 export const LEGACY_CHECKLIST_DRAFT_KEYS = ["arden24:session:v1:page:checklist"] as const;
+/** Legacy `useSessionFormState("page:strategy-new", …)` full storage key. */
+export const LEGACY_STRATEGY_NEW_DRAFT_KEY =
+  "arden24:session:v1:page:strategy-new" as const;

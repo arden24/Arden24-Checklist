@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState, FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/log-error";
-import { useSessionFormState } from "@/lib/hooks/useSessionFormState";
+import {
+  clearStrategyDraftFromSession,
+  readStrategyDraftForEditPage,
+  writeStrategyDraftToSession,
+  type StrategyFormFields,
+} from "@/lib/strategy-session-draft";
 import {
   fetchStrategyById,
   updateStrategy,
@@ -32,15 +37,7 @@ function normaliseChecklist(
   );
 }
 
-type EditStrategyFormSnapshot = {
-  name: string;
-  description: string;
-  market: string;
-  timeframes: string;
-  checklistItems: ChecklistItem[];
-};
-
-function snapshotFromStrategy(s: Strategy): EditStrategyFormSnapshot {
+function snapshotFromStrategy(s: Strategy): StrategyFormFields {
   return {
     name: s.name,
     description: s.description,
@@ -64,13 +61,44 @@ function EditStrategyFormLoaded({
   user,
 }: EditStrategyFormLoadedProps) {
   const router = useRouter();
-  const initial = useMemo(() => snapshotFromStrategy(strategy), [strategy]);
-  const [form, setForm, resetFormDraft] = useSessionFormState<EditStrategyFormSnapshot>(
-    `page:strategy-edit:${strategy.id}`,
-    initial
+  const [form, setForm] = useState<StrategyFormFields>(() =>
+    snapshotFromStrategy(strategy)
   );
+  const [hydrated, setHydrated] = useState(false);
+  const skipNextStrategyPersistRef = useRef(false);
+  const strategyRef = useRef(strategy);
+  strategyRef.current = strategy;
   const { name, description, market, timeframes, checklistItems } = form;
   const [isSaving, setIsSaving] = useState(false);
+
+  /** Once per strategy id: merge session draft only when it matches this record (never apply "new" or another id). */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const s = strategyRef.current;
+    const baseline = snapshotFromStrategy(s);
+    const fromSession = readStrategyDraftForEditPage(s.id, baseline);
+    if (fromSession) setForm(fromSession);
+    setHydrated(true);
+  }, [strategy.id]);
+
+  useEffect(() => {
+    if (!hydrated || typeof window === "undefined") return;
+    if (skipNextStrategyPersistRef.current) {
+      skipNextStrategyPersistRef.current = false;
+      return;
+    }
+    writeStrategyDraftToSession({
+      mode: "edit",
+      strategyId: strategy.id,
+      ...form,
+    });
+  }, [hydrated, form, strategy.id]);
+
+  const resetFormDraft = useCallback(() => {
+    skipNextStrategyPersistRef.current = true;
+    setForm(snapshotFromStrategy(strategy));
+    clearStrategyDraftFromSession({ editStrategyId: strategy.id });
+  }, [strategy]);
 
   function updateChecklistItem(index: number, value: string) {
     setForm((f) => ({
