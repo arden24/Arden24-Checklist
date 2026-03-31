@@ -17,7 +17,10 @@ import JournalDayDetail from "@/components/JournalDayDetail";
 import JournalAccountProgress from "@/components/JournalAccountProgress";
 import SummaryCard from "@/components/SummaryCard";
 import PerformanceInsights from "@/components/PerformanceInsights";
-import { dispatchTradesUpdated } from "@/lib/trades-updated";
+import {
+  ARDEN24_TRADES_UPDATED_EVENT,
+  dispatchTradesUpdated,
+} from "@/lib/trades-updated";
 
 function dateKey(d: Date): string {
   const y = d.getFullYear();
@@ -113,6 +116,12 @@ export default function JournalPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const onUpdated = () => load();
+    window.addEventListener(ARDEN24_TRADES_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(ARDEN24_TRADES_UPDATED_EVENT, onUpdated);
+  }, [load]);
+
   const handleCancelTrade = useCallback(
     async (trade: Trade) => {
       if (!trade?.id) return;
@@ -198,7 +207,7 @@ export default function JournalPage() {
 
         </header>
 
-        <JournalAccountProgress />
+        <JournalAccountProgress closedTrades={trades} />
 
         <section className="space-y-6">
           <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

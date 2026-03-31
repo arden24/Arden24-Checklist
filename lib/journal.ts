@@ -1,4 +1,5 @@
 import { getTradesKey, getOpenTradesKey } from "./storage-keys";
+import { dispatchTradesUpdated } from "./trades-updated";
 
 export const TRADES_STORAGE_KEY = "tradechecklist_trades";
 export const OPEN_TRADES_STORAGE_KEY = "tradechecklist_open_trades";
@@ -268,6 +269,7 @@ export async function closeTrade(
       // 2) Only after successful insert, delete from open_trades
       await deleteOpenTrade(supabase, open.id);
       console.log("[closeTrade] Delete from open_trades succeeded");
+      dispatchTradesUpdated();
     } catch (err) {
       console.error("[closeTrade] Supabase error", err);
       // Surface Supabase errors to the caller (UI will show a clear message)
@@ -288,6 +290,7 @@ export async function closeTrade(
     window.localStorage.setItem(key, JSON.stringify([fullTrade, ...existing]));
   }
   removeOpenTrade(open.id, userId);
+  dispatchTradesUpdated();
 }
 
 /**
