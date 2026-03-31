@@ -12,6 +12,7 @@ import {
 } from "@/lib/journal";
 import { useSessionFormState } from "@/lib/hooks/useSessionFormState";
 import { logError } from "@/lib/log-error";
+import { parseMoneyAmountInput } from "@/lib/realised-pnl";
 
 function formatDate(key: string): string {
   const [y, m, d] = key.split("-");
@@ -88,9 +89,9 @@ export default function OpenTradesPage() {
 
   const handleCloseSubmit = (open: OpenTrade) => async (e: React.FormEvent) => {
     e.preventDefault();
-    const pnlNum = Number(closeForm.pnl);
-    if (Number.isNaN(pnlNum)) {
-      alert("Enter a valid P/L number.");
+    const parsed = parseMoneyAmountInput(closeForm.pnl.trim());
+    if (closeForm.result !== "breakeven" && parsed === null) {
+      alert("Enter a valid P/L amount (you can include £ or commas).");
       return;
     }
     if (!user?.id || !supabase) {
@@ -108,7 +109,7 @@ export default function OpenTradesPage() {
         open,
         {
           result: closeForm.result,
-          pnl: pnlNum,
+          pnl: parsed ?? 0,
           currency: closeForm.currency,
           thoughts: closeForm.thoughts.trim() || undefined,
           rr: closeForm.rr.trim() || undefined,
@@ -250,22 +251,34 @@ export default function OpenTradesPage() {
                           <option value="loss">Loss</option>
                           <option value="breakeven">Breakeven</option>
                         </select>
+                        <p className="mt-1.5 text-[11px] leading-snug text-zinc-500">
+                          {closeForm.result === "win" && "This will be saved as profit (positive P/L)."}
+                          {closeForm.result === "loss" && "This will be saved as a loss (negative P/L)."}
+                          {closeForm.result === "breakeven" && "This will be saved as £0 — P/L field is optional."}
+                        </p>
                       </div>
                       <div>
                         <label className="mb-1 block text-xs text-zinc-500">
                           P/L
                         </label>
                         <input
-                          type="number"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           value={closeForm.pnl}
                           onChange={(e) =>
                             setDraft((f) => ({ ...f, pnl: e.target.value }))
                           }
-                          placeholder="0.00"
+                          placeholder={
+                            closeForm.result === "breakeven"
+                              ? "Optional (saved as 0)"
+                              : "e.g. 100 or £100"
+                          }
                           className="w-full rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white"
-                          required
+                          required={closeForm.result !== "breakeven"}
                         />
+                        <p className="mt-1 text-[11px] text-zinc-600">
+                          Amount only — win/loss above sets the sign automatically.
+                        </p>
                       </div>
                       <div>
                         <label className="mb-1 block text-xs text-zinc-500">

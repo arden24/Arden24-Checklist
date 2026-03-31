@@ -1,6 +1,7 @@
 "use client";
 
 import type { Trade } from "@/lib/journal";
+import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
 import JournalTradeRow from "./JournalTradeRow";
 
 type JournalDayDetailProps = {
@@ -31,12 +32,10 @@ export default function JournalDayDetail({
   dayNotes,
   onCancelTrade,
 }: JournalDayDetailProps) {
-  const totalPnl = trades.reduce((sum, t) => sum + t.pnl, 0);
-  const wins = trades.filter((t) => t.result === "win" || t.pnl > 0).length;
-  const losses = trades.filter((t) => t.result === "loss" || t.pnl < 0).length;
-  const breakeven = trades.filter(
-    (t) => t.result === "breakeven" || t.pnl === 0
-  ).length;
+  const totalPnl = trades.reduce((sum, t) => sum + canonicalRealisedPnl(t), 0);
+  const wins = trades.filter((t) => tradeOutcomeKind(t) === "win").length;
+  const losses = trades.filter((t) => tradeOutcomeKind(t) === "loss").length;
+  const breakeven = trades.filter((t) => tradeOutcomeKind(t) === "breakeven").length;
 
   const pnlColor =
     totalPnl > 0 ? "text-sky-400" : totalPnl < 0 ? "text-red-400" : "text-zinc-400";

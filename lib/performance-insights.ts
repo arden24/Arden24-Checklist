@@ -1,4 +1,5 @@
 import type { Trade } from "@/lib/supabase/trades";
+import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
 
 export type Insight = {
   id: string;
@@ -21,7 +22,7 @@ function getWords(text: string): string[] {
 }
 
 function extractMistakeKeywords(trades: Trade[]): string[] {
-  const lossTrades = trades.filter((t) => t.result === "loss" || t.pnl < 0);
+  const lossTrades = trades.filter((t) => tradeOutcomeKind(t) === "loss");
   const combined =
     lossTrades
       .flatMap((t) => [t.notes ?? "", t.thoughts ?? "", t.description ?? ""])
@@ -56,15 +57,15 @@ export function computeInsights(trades: Trade[]): Insight[] {
     return insights;
   }
 
-  const wins = trades.filter((t) => t.result === "win" || t.pnl > 0);
-  const losses = trades.filter((t) => t.result === "loss" || t.pnl < 0);
+  const wins = trades.filter((t) => tradeOutcomeKind(t) === "win");
+  const losses = trades.filter((t) => tradeOutcomeKind(t) === "loss");
 
   // --- Best / worst market (by total P/L) ---
   const byMarket: Record<string, { pnl: number; count: number }> = {};
   trades.forEach((t) => {
     const m = t.market?.trim() || "—";
     if (!byMarket[m]) byMarket[m] = { pnl: 0, count: 0 };
-    byMarket[m].pnl += t.pnl;
+    byMarket[m].pnl += canonicalRealisedPnl(t);
     byMarket[m].count += 1;
   });
   const marketEntries = Object.entries(byMarket).filter(([, v]) => v.count >= 1);
@@ -92,9 +93,9 @@ export function computeInsights(trades: Trade[]): Insight[] {
   trades.forEach((t) => {
     const s = t.session?.trim() || "—";
     if (!bySession[s]) bySession[s] = { pnl: 0, wins: 0, count: 0 };
-    bySession[s].pnl += t.pnl;
+    bySession[s].pnl += canonicalRealisedPnl(t);
     bySession[s].count += 1;
-    if (t.result === "win" || t.pnl > 0) bySession[s].wins += 1;
+    if (tradeOutcomeKind(t) === "win") bySession[s].wins += 1;
   });
   const sessionEntries = Object.entries(bySession).filter(([k]) => k !== "—");
   if (sessionEntries.length >= 1) {
@@ -158,7 +159,7 @@ export function computeInsights(trades: Trade[]): Insight[] {
   trades.forEach((t) => {
     const s = t.strategy?.trim() || "—";
     if (!byStrategy[s]) byStrategy[s] = { pnl: 0, count: 0 };
-    byStrategy[s].pnl += t.pnl;
+    byStrategy[s].pnl += canonicalRealisedPnl(t);
     byStrategy[s].count += 1;
   });
   const strategyEntries = Object.entries(byStrategy).filter(([k]) => k !== "—" && k !== "");

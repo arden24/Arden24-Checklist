@@ -8,6 +8,7 @@ import { fetchOpenTrades } from "@/lib/supabase/open-trades";
 import { loadTrades, loadOpenTrades, type Trade, type OpenTrade } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
 import { ARDEN24_TRADES_UPDATED_EVENT } from "@/lib/trades-updated";
+import { canonicalRealisedPnl } from "@/lib/realised-pnl";
 
 type Timeframe = "days" | "weeks" | "months" | "quarters" | "years";
 
@@ -117,8 +118,9 @@ function aggregateByTimeframe(
       label = key;
     }
     if (!buckets[key]) ensureBucket(key, label);
-    if (t.pnl > 0) buckets[key].wins += 1;
-    else if (t.pnl < 0) buckets[key].losses += 1;
+    const p = canonicalRealisedPnl(t);
+    if (p > 0) buckets[key].wins += 1;
+    else if (p < 0) buckets[key].losses += 1;
     else buckets[key].breakeven += 1;
   });
 

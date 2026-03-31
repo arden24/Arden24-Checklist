@@ -21,6 +21,7 @@ import {
   ARDEN24_TRADES_UPDATED_EVENT,
   dispatchTradesUpdated,
 } from "@/lib/trades-updated";
+import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
 
 function dateKey(d: Date): string {
   const y = d.getFullYear();
@@ -47,13 +48,13 @@ function formatDateLabel(dateStr: string): string {
 
 function computeStats(closedTrades: Trade[], openTradesCount: number) {
   const total = closedTrades.length;
-  const wins = closedTrades.filter((t) => t.result === "win" || t.pnl > 0).length;
+  const wins = closedTrades.filter((t) => tradeOutcomeKind(t) === "win").length;
   const winRate = total ? Math.round((wins / total) * 100) : 0;
-  const netPnl = closedTrades.reduce((s, t) => s + t.pnl, 0);
+  const netPnl = closedTrades.reduce((s, t) => s + canonicalRealisedPnl(t), 0);
 
   const byDate: Record<string, number> = {};
   closedTrades.forEach((t) => {
-    byDate[t.date] = (byDate[t.date] ?? 0) + t.pnl;
+    byDate[t.date] = (byDate[t.date] ?? 0) + canonicalRealisedPnl(t);
   });
   const dates = Object.entries(byDate);
   const bestDay = dates.length ? dates.reduce((a, b) => (a[1] > b[1] ? a : b)) : null;
@@ -63,7 +64,7 @@ function computeStats(closedTrades: Trade[], openTradesCount: number) {
   closedTrades.forEach((t) => {
     const key = t.pair?.trim() || "—";
     if (!byAsset[key]) byAsset[key] = { pnl: 0, count: 0 };
-    byAsset[key].pnl += t.pnl;
+    byAsset[key].pnl += canonicalRealisedPnl(t);
     byAsset[key].count += 1;
   });
   const bestTradedAsset = Object.entries(byAsset).length

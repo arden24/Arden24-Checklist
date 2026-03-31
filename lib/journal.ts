@@ -1,5 +1,6 @@
 import { getTradesKey, getOpenTradesKey } from "./storage-keys";
 import { dispatchTradesUpdated } from "./trades-updated";
+import { normaliseRealisedPnLForClose, parseMoneyAmountInput } from "./realised-pnl";
 
 export const TRADES_STORAGE_KEY = "tradechecklist_trades";
 export const OPEN_TRADES_STORAGE_KEY = "tradechecklist_open_trades";
@@ -223,7 +224,8 @@ export async function closeTrade(
   open: OpenTrade,
   outcome: {
     result: "win" | "loss" | "breakeven";
-    pnl: number;
+    /** Raw amount from UI; sign is ignored — normalised from `result`. */
+    pnl: number | string;
     currency: "USD" | "GBP" | "EUR";
     thoughts?: string;
     rr?: string;
@@ -240,13 +242,19 @@ export async function closeTrade(
   const d = String(closedDate.getDate()).padStart(2, "0");
   const date = `${y}-${m}-${d}`;
 
+  const rawMagnitude =
+    typeof outcome.pnl === "number" && Number.isFinite(outcome.pnl)
+      ? outcome.pnl
+      : parseMoneyAmountInput(String(outcome.pnl ?? "")) ?? 0;
+  const normalisedPnl = normaliseRealisedPnLForClose(outcome.result, rawMagnitude);
+
   const trade: Omit<Trade, "id" | "createdAt"> = {
     date,
     pair: open.pair,
     market: open.market,
     session: open.session,
     direction: open.direction,
-    pnl: outcome.pnl,
+    pnl: normalisedPnl,
     rr: outcome.rr,
     thoughts: outcome.thoughts,
     result: outcome.result,

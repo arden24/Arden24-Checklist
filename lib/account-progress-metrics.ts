@@ -2,23 +2,14 @@
  * Pure helpers for Journal Account Progress: P/L from closed trades, goal math,
  * default milestones, streaks, and alert copy.
  *
- * Breakeven rule: pnl === 0 or result === "breakeven" → neutral. Breakeven trades
- * are skipped when walking the chain (they neither extend nor reset a directional
- * streak toward the next older trade; see computeStreakStats).
+ * Streaks use `tradeOutcomeKind` from `realised-pnl` (canonical P/L vs result).
+ * Breakeven trades are omitted from W/L sequences (see computeStreakStats).
  */
 
 import type { Trade } from "@/lib/journal";
+import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
 
-export type TradeOutcomeKind = "win" | "loss" | "breakeven";
-
-export function tradeOutcomeKind(t: Pick<Trade, "pnl" | "result">): TradeOutcomeKind {
-  if (t.result === "breakeven") return "breakeven";
-  if (t.pnl === 0) return "breakeven";
-  if (t.result === "win") return "win";
-  if (t.result === "loss") return "loss";
-  if (t.pnl > 0) return "win";
-  return "loss";
-}
+export type { TradeOutcomeKind } from "@/lib/realised-pnl";
 
 /** Sort key for chronological order (oldest → newest). */
 export function tradeCloseSortKey(t: Trade): number {
@@ -41,7 +32,7 @@ export function sortTradesChronological(trades: Trade[]): Trade[] {
 }
 
 export function totalNetPLFromClosedTrades(trades: Trade[]): number {
-  return trades.reduce((s, t) => s + (Number.isFinite(t.pnl) ? t.pnl : 0), 0);
+  return trades.reduce((s, t) => s + canonicalRealisedPnl(t), 0);
 }
 
 export type GoalProgressMath = {

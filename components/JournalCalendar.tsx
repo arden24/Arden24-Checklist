@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import type { Trade } from "@/lib/journal";
+import { canonicalRealisedPnl } from "@/lib/realised-pnl";
 import JournalDayCell from "./JournalDayCell";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -57,7 +58,7 @@ export default function JournalCalendar({
     trades.forEach((t) => {
       const key = t.date;
       if (!map[key]) map[key] = 0;
-      map[key] += t.pnl;
+      map[key] += canonicalRealisedPnl(t);
     });
     return map;
   }, [trades]);

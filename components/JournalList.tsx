@@ -8,18 +8,20 @@ import { fetchTrades } from "@/lib/supabase/trades";
 import { cancelClosedTrade, loadTrades, type Trade } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
 import { dispatchTradesUpdated } from "@/lib/trades-updated";
+import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
 
 function formatPnl(t: Trade): string {
+  const pnl = canonicalRealisedPnl(t);
   const sym = t.currency === "GBP" ? "£" : t.currency === "EUR" ? "€" : "$";
-  const sign = t.pnl >= 0 ? "+" : "";
-  return `${sign}${sym}${Math.abs(t.pnl).toFixed(2)}`;
+  const sign = pnl >= 0 ? "+" : "";
+  return `${sign}${sym}${Math.abs(pnl).toFixed(2)}`;
 }
 
 function formatResult(t: Trade): string {
-  if (t.result === "win") return "Win";
-  if (t.result === "loss") return "Loss";
-  if (t.result === "breakeven") return "Breakeven";
-  return t.pnl > 0 ? "Win" : t.pnl < 0 ? "Loss" : "Breakeven";
+  const o = tradeOutcomeKind(t);
+  if (o === "win") return "Win";
+  if (o === "loss") return "Loss";
+  return "Breakeven";
 }
 
 export default function JournalList() {

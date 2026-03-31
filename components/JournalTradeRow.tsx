@@ -1,6 +1,7 @@
 "use client";
 
 import type { Trade } from "@/lib/journal";
+import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
 
 type JournalTradeRowProps = {
   trade: Trade;
@@ -17,9 +18,11 @@ export default function JournalTradeRow({
   trade,
   onCancelTrade,
 }: JournalTradeRowProps) {
-  const isWin = trade.pnl > 0;
-  const isLoss = trade.pnl < 0;
-  const isBreakeven = trade.pnl === 0;
+  const pnl = canonicalRealisedPnl(trade);
+  const outcome = tradeOutcomeKind(trade);
+  const isWin = outcome === "win";
+  const isLoss = outcome === "loss";
+  const isBreakeven = outcome === "breakeven";
 
   const pnlColor = isWin
     ? "text-sky-400"
@@ -66,7 +69,7 @@ export default function JournalTradeRow({
           </div>
         </div>
         <p className={`text-sm font-semibold ${pnlColor}`}>
-          {formatPnl(trade.pnl, trade.currency)}
+          {formatPnl(pnl, trade.currency)}
         </p>
       </div>
 
