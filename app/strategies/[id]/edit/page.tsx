@@ -18,6 +18,10 @@ import {
   type Strategy,
   type ChecklistItem,
 } from "@/lib/supabase/strategies";
+import { uploadChecklistImage } from "@/lib/supabase/checklist-images";
+import { chooseDraftSource } from "@/lib/draft-conflict";
+import { fetchUserDraft, upsertUserDraft, deleteUserDraft } from "@/lib/supabase/user-drafts";
+import { resolveChecklistImageRefs } from "@/lib/supabase/checklist-images";
 
 function normaliseChecklist(
   checklist: Strategy["checklist"]
@@ -31,6 +35,7 @@ function normaliseChecklist(
           text: item.text ?? "",
           timeframe: item.timeframe ?? "",
           image: item.image,
+          imageRef: item.imageRef,
           weight: Number.isFinite(Number(item.weight)) ? Number(item.weight) : 1,
           critical: Boolean(item.critical),
         }
@@ -66,6 +71,7 @@ function EditStrategyFormLoaded({
   );
   const [hydrated, setHydrated] = useState(false);
   const skipNextStrategyPersistRef = useRef(false);
+  const persistTimerRef = useRef<number | null>(null);
   const strategyRef = useRef(strategy);
   strategyRef.current = strategy;
   const { name, description, market, timeframes, checklistItems } = form;
@@ -77,6 +83,45 @@ function EditStrategyFormLoaded({
     const s = strategyRef.current;
     const baseline = snapshotFromStrategy(s);
     const fromSession = readStrategyDraftForEditPage(s.id, baseline);
+    if (supabase && user?.id) {
+      fetchUserDraft(supabase, user.id, `strategy:edit:${s.id}:draft`)
+        .then(async (row) => {
+          const serverPayload = row?.payload as any;
+          const server =
+            serverPayload && typeof serverPayload === "object" ? serverPayload : null;
+
+          const which = chooseDraftSource({
+            localUpdatedAt: (fromSession as any)?.updatedAt ?? null,
+            serverUpdatedAt: row?.updatedAt ?? null,
+          });
+
+          const candidate =
+            which === "server" ? server : which === "local" ? fromSession : server ?? fromSession;
+
+          if (candidate) {
+            const next = { ...baseline, ...candidate } as StrategyFormFields;
+            const refs = next.checklistItems
+              .map((i: any) => i?.imageRef)
+              .filter(Boolean) as string[];
+            if (refs.length > 0) {
+              try {
+                const byRef = await resolveChecklistImageRefs(supabase, refs);
+                next.checklistItems = next.checklistItems.map((i: any) => ({
+                  ...i,
+                  image: i.imageRef ? byRef[i.imageRef] ?? i.image : i.image,
+                }));
+              } catch {
+                // ignore
+              }
+            }
+            setForm(next);
+          }
+        })
+        .catch(logError)
+        .finally(() => setHydrated(true));
+      return;
+    }
+
     if (fromSession) setForm(fromSession);
     setHydrated(true);
   }, [strategy.id]);
@@ -92,12 +137,31 @@ function EditStrategyFormLoaded({
       strategyId: strategy.id,
       ...form,
     });
+
+    if (supabase && user?.id) {
+      if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = window.setTimeout(() => {
+        const payload = {
+          ...form,
+          checklistItems: form.checklistItems.map((i: any) => ({
+            ...i,
+            image: i.imageRef ? undefined : i.image,
+          })),
+        };
+        upsertUserDraft(supabase, user.id, `strategy:edit:${strategy.id}:draft`, payload).catch(
+          logError
+        );
+      }, 600);
+    }
   }, [hydrated, form, strategy.id]);
 
   const resetFormDraft = useCallback(() => {
     skipNextStrategyPersistRef.current = true;
     setForm(snapshotFromStrategy(strategy));
     clearStrategyDraftFromSession({ editStrategyId: strategy.id });
+    if (supabase && user?.id) {
+      deleteUserDraft(supabase, user.id, `strategy:edit:${strategy.id}:draft`).catch(logError);
+    }
   }, [strategy]);
 
   function updateChecklistItem(index: number, value: string) {
@@ -159,12 +223,30 @@ function EditStrategyFormLoaded({
     }));
   }
 
-  function handleChecklistImageChange(
+  async function handleChecklistImageChange(
     index: number,
     event: React.ChangeEvent<HTMLInputElement>
   ) {
     const file = event.target.files?.[0];
     if (!file) return;
+    try {
+      if (supabase && user) {
+        const uploaded = await uploadChecklistImage(supabase, user.id, file);
+        setForm((f) => ({
+          ...f,
+          checklistItems: f.checklistItems.map((item, i) =>
+            i === index
+              ? { ...item, image: uploaded.signedUrl, imageRef: uploaded.imageRef }
+              : item
+          ),
+        }));
+        return;
+      }
+    } catch (err) {
+      logError(err);
+      alert("Failed to upload screenshot. Try again.");
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -172,7 +254,7 @@ function EditStrategyFormLoaded({
       setForm((f) => ({
         ...f,
         checklistItems: f.checklistItems.map((item, i) =>
-          i === index ? { ...item, image: result } : item
+          i === index ? { ...item, image: result, imageRef: undefined } : item
         ),
       }));
     };
@@ -188,11 +270,22 @@ function EditStrategyFormLoaded({
 
     setIsSaving(true);
     try {
-      const trimmedChecklist = checklistItems
+      const serverChecklist = checklistItems
+        .map((item) => ({
+          text: item.text.trim(),
+          timeframe: item.timeframe.trim(),
+          image: item.imageRef ?? item.image,
+          imageRef: item.imageRef,
+          weight: item.weight,
+          critical: item.critical,
+        }))
+        .filter((item) => item.text.length > 0);
+      const localChecklist = checklistItems
         .map((item) => ({
           text: item.text.trim(),
           timeframe: item.timeframe.trim(),
           image: item.image,
+          imageRef: item.imageRef,
           weight: item.weight,
           critical: item.critical,
         }))
@@ -204,7 +297,7 @@ function EditStrategyFormLoaded({
           description: description.trim(),
           market: market.trim(),
           timeframes: timeframes.trim(),
-          checklist: trimmedChecklist,
+          checklist: serverChecklist,
         });
       } else {
         const updatedStrategy: Strategy = {
@@ -213,7 +306,7 @@ function EditStrategyFormLoaded({
           description: description.trim(),
           market: market.trim(),
           timeframes: timeframes.trim(),
-          checklist: trimmedChecklist,
+          checklist: localChecklist,
         };
         const raw = window.localStorage.getItem(strategiesKey);
         const all = raw ? (JSON.parse(raw) as Strategy[]) : [];

@@ -52,6 +52,7 @@ function parseChecklistItems(raw: unknown): ChecklistItem[] {
       text: typeof o.text === "string" ? o.text : "",
       timeframe: typeof o.timeframe === "string" ? o.timeframe : "",
       image: typeof o.image === "string" ? o.image : undefined,
+      imageRef: typeof o.imageRef === "string" ? o.imageRef : undefined,
       weight: Number.isFinite(Number(o.weight)) ? Number(o.weight) : 1,
       critical: Boolean(o.critical),
     };

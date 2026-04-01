@@ -12,8 +12,14 @@ import {
   ARDEN24_CHECKLIST_DRAFT_KEY,
   LEGACY_CHECKLIST_DRAFT_KEYS,
 } from "@/lib/session-draft-keys";
+import { chooseDraftSource } from "@/lib/draft-conflict";
+import {
+  deleteUserDraft,
+  fetchUserDraft,
+  upsertUserDraft,
+} from "@/lib/supabase/user-drafts";
 
-type ChecklistDraft = { activeId: string; checked: boolean[] };
+type ChecklistDraft = { activeId: string; checked: boolean[]; updatedAt?: string };
 
 function parseChecklistDraft(raw: string | null): ChecklistDraft | null {
   if (!raw) return null;
@@ -23,7 +29,8 @@ function parseChecklistDraft(raw: string | null): ChecklistDraft | null {
     const o = v as Record<string, unknown>;
     if (typeof o.activeId !== "string") return null;
     const checked = Array.isArray(o.checked) ? o.checked.map(Boolean) : [];
-    return { activeId: o.activeId, checked };
+    const updatedAt = typeof o.updatedAt === "string" ? o.updatedAt : undefined;
+    return { activeId: o.activeId, checked, updatedAt };
   } catch {
     return null;
   }
@@ -54,7 +61,7 @@ function writeChecklistDraftToSession(activeId: string, checked: boolean[]) {
   try {
     sessionStorage.setItem(
       ARDEN24_CHECKLIST_DRAFT_KEY,
-      JSON.stringify({ activeId, checked })
+      JSON.stringify({ activeId, checked, updatedAt: new Date().toISOString() })
     );
   } catch {
     // ignore
@@ -72,6 +79,8 @@ export default function ChecklistPage() {
   const lastStrategyIdRef = useRef<string | null>(null);
   /** After "Clear checklist", skip one persist pass so sessionStorage stays cleared. */
   const skipNextChecklistPersistRef = useRef(false);
+  const draftHydratedRef = useRef(false);
+  const persistTimerRef = useRef<number | null>(null);
 
   const load = useCallback(() => {
     if (supabase && user) {
@@ -107,7 +116,7 @@ export default function ChecklistPage() {
     load();
   }, [load]);
 
-  /** First time we have strategies this mount: restore session draft or default first strategy. */
+  /** First time we have strategies this mount: restore server draft (signed in) or session draft. */
   useEffect(() => {
     if (strategies.length === 0) {
       draftBootstrapped.current = false;
@@ -117,23 +126,78 @@ export default function ChecklistPage() {
     if (draftBootstrapped.current) return;
     draftBootstrapped.current = true;
 
-    const draft = readChecklistDraftFromSession();
+    const sessionDraft = readChecklistDraftFromSession();
 
-    if (draft && strategies.some((s) => s.id === draft.activeId)) {
-      const st = strategies.find((s) => s.id === draft.activeId)!;
-      const len = (st.checklist ?? []).length;
-      const arr =
-        draft.checked.length === len
-          ? draft.checked
-          : Array.from({ length: len }, (_, i) => Boolean(draft.checked[i]));
-      setActiveId(draft.activeId);
-      setChecked(arr);
-    } else {
-      const first = strategies[0];
-      setActiveId(first.id);
-      setChecked(new Array((first.checklist ?? []).length).fill(false));
+    const applyDraft = (d: ChecklistDraft | null): boolean => {
+      if (d && strategies.some((s) => s.id === d.activeId)) {
+        const st = strategies.find((s) => s.id === d.activeId)!;
+        const len = (st.checklist ?? []).length;
+        const arr =
+          d.checked.length === len
+            ? d.checked
+            : Array.from({ length: len }, (_, i) => Boolean(d.checked[i]));
+        setActiveId(d.activeId);
+        setChecked(arr);
+        return true;
+      }
+      return false;
+    };
+
+    if (supabase && user?.id) {
+      fetchUserDraft(supabase, user.id, "checklist:draft")
+        .then((row) => {
+          const serverPayload = row?.payload as any;
+          const serverDraft: ChecklistDraft | null =
+            serverPayload && typeof serverPayload === "object"
+              ? {
+                  activeId: typeof serverPayload.activeId === "string" ? serverPayload.activeId : "",
+                  checked: Array.isArray(serverPayload.checked)
+                    ? serverPayload.checked.map(Boolean)
+                    : [],
+                  updatedAt: row?.updatedAt,
+                }
+              : null;
+
+          const which = chooseDraftSource({
+            localUpdatedAt: sessionDraft?.updatedAt ?? null,
+            serverUpdatedAt: row?.updatedAt ?? null,
+          });
+
+          if (which === "server") {
+            if (applyDraft(serverDraft)) return;
+          } else if (which === "local") {
+            if (applyDraft(sessionDraft)) return;
+          }
+
+          if (applyDraft(serverDraft)) return;
+          if (applyDraft(sessionDraft)) return;
+
+          const first = strategies[0];
+          setActiveId(first.id);
+          setChecked(new Array((first.checklist ?? []).length).fill(false));
+        })
+        .catch((err) => {
+          logError(err);
+          if (applyDraft(sessionDraft)) return;
+          const first = strategies[0];
+          setActiveId(first.id);
+          setChecked(new Array((first.checklist ?? []).length).fill(false));
+        })
+        .finally(() => {
+          draftHydratedRef.current = true;
+        });
+      return;
     }
-  }, [strategies]);
+
+    if (applyDraft(sessionDraft)) {
+      draftHydratedRef.current = true;
+      return;
+    }
+    const first = strategies[0];
+    setActiveId(first.id);
+    setChecked(new Array((first.checklist ?? []).length).fill(false));
+    draftHydratedRef.current = true;
+  }, [strategies, supabase, user?.id]);
 
   /** Persist checklist draft (session tab only). */
   useEffect(() => {
@@ -142,7 +206,17 @@ export default function ChecklistPage() {
       skipNextChecklistPersistRef.current = false;
       return;
     }
+    if (!draftHydratedRef.current) return;
     writeChecklistDraftToSession(activeId, checked);
+
+    if (supabase && user?.id) {
+      if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = window.setTimeout(() => {
+        upsertUserDraft(supabase, user.id, "checklist:draft", { activeId, checked }).catch(
+          logError
+        );
+      }, 500);
+    }
   }, [activeId, checked, strategies.length]);
 
   const activeStrategy = useMemo(
@@ -232,6 +306,9 @@ export default function ChecklistPage() {
       }
     } catch {
       // ignore
+    }
+    if (supabase && user?.id) {
+      deleteUserDraft(supabase, user.id, "checklist:draft").catch(logError);
     }
   }
 

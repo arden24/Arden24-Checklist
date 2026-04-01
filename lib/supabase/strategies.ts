@@ -1,9 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  asChecklistImageRefIfPathLike,
+  resolveChecklistImageRefs,
+} from "@/lib/supabase/checklist-images";
 
 export type ChecklistItem = {
   text: string;
   timeframe: string;
   image?: string;
+  /** Stable storage pointer for cross-device checklist screenshots. */
+  imageRef?: string;
   weight: number;
   critical: boolean;
 };
@@ -108,6 +114,13 @@ function normaliseChecklist(checklist: unknown): ChecklistItem[] {
       const text = typeof obj.text === "string" ? obj.text : "";
       const timeframe = typeof obj.timeframe === "string" ? obj.timeframe : "";
       const image = typeof obj.image === "string" ? obj.image : undefined;
+      const imageRefCandidate =
+        typeof obj.imageRef === "string"
+          ? obj.imageRef
+          : typeof obj.image === "string"
+          ? obj.image
+          : undefined;
+      const imageRef = asChecklistImageRefIfPathLike(imageRefCandidate) ?? undefined;
       const inferred = inferredByText[text];
 
       const rawWeight = obj.weight;
@@ -125,6 +138,7 @@ function normaliseChecklist(checklist: unknown): ChecklistItem[] {
         text,
         timeframe,
         image,
+        imageRef,
         weight,
         critical,
       } satisfies ChecklistItem;
@@ -140,7 +154,21 @@ export async function fetchStrategies(
     .select("*")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(rowToStrategy);
+  const base = (data ?? []).map(rowToStrategy);
+  const refs = base.flatMap((s) => s.checklist.map((i) => i.imageRef).filter(Boolean)) as string[];
+  if (refs.length === 0) return base;
+  try {
+    const byRef = await resolveChecklistImageRefs(supabase, refs);
+    return base.map((s) => ({
+      ...s,
+      checklist: s.checklist.map((i) => ({
+        ...i,
+        image: i.imageRef ? byRef[i.imageRef] ?? i.image : i.image,
+      })),
+    }));
+  } catch {
+    return base;
+  }
 }
 
 export async function fetchStrategyById(
@@ -153,7 +181,24 @@ export async function fetchStrategyById(
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
-  return data ? rowToStrategy(data as StrategyRow) : null;
+  if (!data) return null;
+  const strategy = rowToStrategy(data as StrategyRow);
+  const refs = strategy.checklist
+    .map((i) => i.imageRef)
+    .filter(Boolean) as string[];
+  if (refs.length === 0) return strategy;
+  try {
+    const byRef = await resolveChecklistImageRefs(supabase, refs);
+    return {
+      ...strategy,
+      checklist: strategy.checklist.map((i) => ({
+        ...i,
+        image: i.imageRef ? byRef[i.imageRef] ?? i.image : i.image,
+      })),
+    };
+  } catch {
+    return strategy;
+  }
 }
 
 export async function insertStrategy(
