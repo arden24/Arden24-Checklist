@@ -505,11 +505,11 @@ export default function ChecklistPage() {
                           )}
                         </div>
                         {item.image && (
-                          <div className="overflow-hidden rounded-lg border border-white/10 bg-black/60">
+                          <div className="w-full h-48 flex items-center justify-center rounded-lg border border-white/10 bg-black/5 cursor-pointer transition hover:scale-[1.02]">
                             <img
                               src={item.image}
                               alt="Checklist rule example"
-                              className="max-h-40 w-full object-cover"
+                              className="max-h-full max-w-full object-contain"
                             />
                           </div>
                         )}
