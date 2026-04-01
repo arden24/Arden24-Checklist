@@ -13,6 +13,7 @@ import {
 import { useSessionFormState } from "@/lib/hooks/useSessionFormState";
 import { logError } from "@/lib/log-error";
 import { parseMoneyAmountInput } from "@/lib/realised-pnl";
+import ScreenshotLightbox from "@/components/ScreenshotLightbox";
 
 function formatDate(key: string): string {
   const [y, m, d] = key.split("-");
@@ -43,12 +44,12 @@ type CloseFormState = {
   currency: "USD" | "GBP" | "EUR";
   thoughts: string;
   rr: string;
-  screenshot: string | null;
+  closingScreenshot: string | null;
   rating: number | null;
 };
 
-/** Persisted in sessionStorage (screenshot kept in memory only — can be large). */
-type CloseFormDraftPersisted = Omit<CloseFormState, "screenshot">;
+/** Persisted in sessionStorage (screenshots kept in memory only — can be large). */
+type CloseFormDraftPersisted = Omit<CloseFormState, "closingScreenshot">;
 
 const CLOSE_DRAFT_INITIAL: CloseFormDraftPersisted = {
   openId: null,
@@ -68,11 +69,12 @@ export default function OpenTradesPage() {
     "page:open-trades-close",
     CLOSE_DRAFT_INITIAL
   );
-  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [closingScreenshot, setClosingScreenshot] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
 
   const closeForm = useMemo<CloseFormState>(
-    () => ({ ...draft, screenshot }),
-    [draft, screenshot]
+    () => ({ ...draft, closingScreenshot }),
+    [draft, closingScreenshot]
   );
 
   const loadOpenTradesList = useCallback(() => {
@@ -113,7 +115,7 @@ export default function OpenTradesPage() {
           currency: closeForm.currency,
           thoughts: closeForm.thoughts.trim() || undefined,
           rr: closeForm.rr.trim() || undefined,
-          screenshot: closeForm.screenshot ?? undefined,
+          closingScreenshot: closeForm.closingScreenshot ?? undefined,
           rating: closeForm.rating ?? undefined,
         },
         user.id,
@@ -121,7 +123,7 @@ export default function OpenTradesPage() {
       );
       loadOpenTradesList();
       resetCloseDraft();
-      setScreenshot(null);
+      setClosingScreenshot(null);
     } catch (err: unknown) {
       logError(err);
       const message = err instanceof Error ? err.message : String(err);
@@ -132,7 +134,7 @@ export default function OpenTradesPage() {
 
   const handleCancelClose = () => {
     resetCloseDraft();
-    setScreenshot(null);
+    setClosingScreenshot(null);
   };
 
   const handleRemove = async (id: string) => {
@@ -202,7 +204,7 @@ export default function OpenTradesPage() {
                       type="button"
                       onClick={() => {
                         setDraft({ ...CLOSE_DRAFT_INITIAL, openId: open.id });
-                        setScreenshot(null);
+                        setClosingScreenshot(null);
                       }}
                       className="rounded-xl bg-sky-500/20 px-3 py-1.5 text-sm font-medium text-sky-300 hover:bg-sky-500/30"
                     >
@@ -222,6 +224,55 @@ export default function OpenTradesPage() {
                   <p className="mt-2 rounded-lg bg-black/30 px-2 py-1.5 text-xs text-zinc-300">
                     {open.notes}
                   </p>
+                )}
+
+                {(open.openingScreenshot || closeForm.closingScreenshot) && (
+                  <div className="mt-3 grid gap-2 md:grid-cols-2">
+                    {open.openingScreenshot && (
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                          Before / Open Trade
+                        </p>
+                        <div
+                          className="w-full h-40 flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-black/5 transition hover:scale-[1.02]"
+                          onClick={() =>
+                            setPreview({
+                              src: open.openingScreenshot as string,
+                              alt: "Before / Open trade screenshot",
+                            })
+                          }
+                        >
+                          <img
+                            src={open.openingScreenshot}
+                            alt="Before / Open trade screenshot"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {closeForm.closingScreenshot && (
+                      <div>
+                        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                          After / Close Trade
+                        </p>
+                        <div
+                          className="w-full h-40 flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-black/5 transition hover:scale-[1.02]"
+                          onClick={() =>
+                            setPreview({
+                              src: closeForm.closingScreenshot as string,
+                              alt: "After / Close trade screenshot",
+                            })
+                          }
+                        >
+                          <img
+                            src={closeForm.closingScreenshot}
+                            alt="After / Close trade screenshot"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {closeForm.openId === open.id && (
@@ -356,11 +407,11 @@ export default function OpenTradesPage() {
                     </div>
                     <div>
                       <label className="mb-1 block text-xs text-zinc-500">
-                        Screenshot (optional)
+                        Closing screenshot (After)
                       </label>
                       <div className="flex flex-wrap items-center gap-3">
                         <label className="cursor-pointer rounded-lg border border-sky-500/50 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-300 hover:bg-sky-500/20">
-                          {closeForm.screenshot ? "Change screenshot" : "Add screenshot"}
+                          {closeForm.closingScreenshot ? "Change screenshot" : "Add screenshot"}
                           <input
                             type="file"
                             accept="image/*"
@@ -370,21 +421,31 @@ export default function OpenTradesPage() {
                               if (!file) return;
                               const reader = new FileReader();
                               reader.onload = () =>
-                                setScreenshot(reader.result as string);
+                                setClosingScreenshot(reader.result as string);
                               reader.readAsDataURL(file);
                             }}
                           />
                         </label>
-                        {closeForm.screenshot && (
+                        {closeForm.closingScreenshot && (
                           <div className="relative">
-                            <img
-                              src={closeForm.screenshot}
-                              alt="Trade screenshot"
-                              className="h-20 w-auto rounded-lg border border-white/10 object-cover"
-                            />
+                            <div
+                              className="w-full h-24 flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-black/5"
+                              onClick={() =>
+                                setPreview({
+                                  src: closeForm.closingScreenshot as string,
+                                  alt: "After / Close trade screenshot",
+                                })
+                              }
+                            >
+                              <img
+                                src={closeForm.closingScreenshot}
+                                alt="After / Close trade screenshot"
+                                className="max-h-full max-w-full object-contain"
+                              />
+                            </div>
                             <button
                               type="button"
-                              onClick={() => setScreenshot(null)}
+                              onClick={() => setClosingScreenshot(null)}
                               className="absolute -right-1 -top-1 rounded-full bg-red-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white"
                             >
                               ×
@@ -420,6 +481,9 @@ export default function OpenTradesPage() {
           It does not provide financial advice.
         </p>
       </div>
+      {preview && (
+        <ScreenshotLightbox src={preview.src} alt={preview.alt} onClose={() => setPreview(null)} />
+      )}
     </main>
   );
 }

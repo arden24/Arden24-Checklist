@@ -20,6 +20,7 @@ export type OpenTrade = {
   entryPrice?: number;
   stopLoss?: number;
   takeProfit?: number;
+  openingScreenshot?: string;
 };
 
 export type Trade = {
@@ -41,6 +42,8 @@ export type Trade = {
   currency?: "USD" | "GBP" | "EUR";
   time?: string;
   screenshot?: string;
+  openingScreenshot?: string;
+  closingScreenshot?: string;
   rating?: number;
 };
 
@@ -230,7 +233,7 @@ export async function closeTrade(
     thoughts?: string;
     rr?: string;
     time?: string;
-    screenshot?: string;
+    closingScreenshot?: string;
     rating?: number;
   },
   userId?: string | null,
@@ -260,7 +263,10 @@ export async function closeTrade(
     result: outcome.result,
     currency: outcome.currency,
     time: outcome.time ?? open.time,
-    screenshot: outcome.screenshot,
+    openingScreenshot: open.openingScreenshot,
+    closingScreenshot: outcome.closingScreenshot,
+    // Legacy compatibility
+    screenshot: outcome.closingScreenshot,
     rating: outcome.rating,
   };
 

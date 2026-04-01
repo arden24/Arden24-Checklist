@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { Trade } from "@/lib/journal";
 import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
+import ScreenshotLightbox from "@/components/ScreenshotLightbox";
 
 type JournalTradeRowProps = {
   trade: Trade;
@@ -18,6 +20,7 @@ export default function JournalTradeRow({
   trade,
   onCancelTrade,
 }: JournalTradeRowProps) {
+  const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
   const pnl = canonicalRealisedPnl(trade);
   const outcome = tradeOutcomeKind(trade);
   const isWin = outcome === "win";
@@ -91,14 +94,56 @@ export default function JournalTradeRow({
           {description}
         </div>
       )}
-      {trade.screenshot && (
-        <div className="mt-2 overflow-hidden rounded-lg border border-white/10">
-          <img
-            src={trade.screenshot}
-            alt="Trade screenshot"
-            className="max-h-40 w-full object-contain"
-          />
+      {(trade.openingScreenshot || trade.closingScreenshot || trade.screenshot) && (
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {trade.openingScreenshot && (
+            <div>
+              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                Before / Open Trade
+              </p>
+              <div
+                className="w-full h-44 flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-black/5 transition hover:scale-[1.02]"
+                onClick={() =>
+                  setPreview({
+                    src: trade.openingScreenshot as string,
+                    alt: "Before / Open trade screenshot",
+                  })
+                }
+              >
+                <img
+                  src={trade.openingScreenshot}
+                  alt="Before / Open trade screenshot"
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+            </div>
+          )}
+          {(trade.closingScreenshot || trade.screenshot) && (
+            <div>
+              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                After / Close Trade
+              </p>
+              <div
+                className="w-full h-44 flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-black/5 transition hover:scale-[1.02]"
+                onClick={() =>
+                  setPreview({
+                    src: (trade.closingScreenshot ?? trade.screenshot) as string,
+                    alt: "After / Close trade screenshot",
+                  })
+                }
+              >
+                <img
+                  src={trade.closingScreenshot ?? trade.screenshot}
+                  alt="After / Close trade screenshot"
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+            </div>
+          )}
         </div>
+      )}
+      {preview && (
+        <ScreenshotLightbox src={preview.src} alt={preview.alt} onClose={() => setPreview(null)} />
       )}
     </div>
   );

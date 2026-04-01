@@ -20,6 +20,8 @@ create index if not exists open_trades_user_id_idx on public.open_trades(user_id
 
 alter table public.open_trades enable row level security;
 
+drop policy if exists "Users can do everything on own open_trades" on public.open_trades;
+
 create policy "Users can do everything on own open_trades"
   on public.open_trades
   for all

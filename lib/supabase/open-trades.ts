@@ -15,6 +15,7 @@ export type OpenTrade = {
   entryPrice?: number;
   stopLoss?: number;
   takeProfit?: number;
+  openingScreenshot?: string;
 };
 
 type OpenTradeRow = {
@@ -30,6 +31,7 @@ type OpenTradeRow = {
   notes: string | null;
   date: string | null;
   created_at: string;
+  opening_screenshot: string | null;
 };
 
 function rowToOpenTrade(row: OpenTradeRow): OpenTrade {
@@ -46,6 +48,7 @@ function rowToOpenTrade(row: OpenTradeRow): OpenTrade {
     entryPrice: row.entry_price != null ? Number(row.entry_price) : undefined,
     stopLoss: row.stop_loss != null ? Number(row.stop_loss) : undefined,
     takeProfit: row.take_profit != null ? Number(row.take_profit) : undefined,
+    openingScreenshot: row.opening_screenshot ?? undefined,
   };
 }
 
@@ -78,6 +81,7 @@ export async function insertOpenTrade(
       lot_size: open.lotSize ?? null,
       notes: open.notes ?? null,
       date: open.date ?? null,
+      opening_screenshot: open.openingScreenshot ?? null,
     })
     .select()
     .single();

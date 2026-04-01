@@ -17,6 +17,8 @@ create index if not exists strategies_user_id_idx on public.strategies(user_id);
 
 alter table public.strategies enable row level security;
 
+drop policy if exists "Users can do everything on own strategies" on public.strategies;
+
 create policy "Users can do everything on own strategies"
   on public.strategies
   for all
@@ -51,6 +53,8 @@ create index if not exists trades_user_id_idx on public.trades(user_id);
 create index if not exists trades_date_idx on public.trades(date);
 
 alter table public.trades enable row level security;
+
+drop policy if exists "Users can do everything on own trades" on public.trades;
 
 create policy "Users can do everything on own trades"
   on public.trades

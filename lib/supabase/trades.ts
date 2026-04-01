@@ -19,6 +19,8 @@ export type Trade = {
   currency?: "USD" | "GBP" | "EUR";
   time?: string;
   screenshot?: string;
+  openingScreenshot?: string;
+  closingScreenshot?: string;
   rating?: number;
 };
 
@@ -42,6 +44,8 @@ type TradeRow = {
   currency: string | null;
   time: string | null;
   screenshot: string | null;
+  opening_screenshot: string | null;
+  closing_screenshot: string | null;
   rating: number | null;
 };
 
@@ -64,7 +68,10 @@ function rowToTrade(row: TradeRow): Trade {
     result: row.result as "win" | "loss" | "breakeven" | undefined,
     currency: row.currency as "USD" | "GBP" | "EUR" | undefined,
     time: row.time ?? undefined,
-    screenshot: row.screenshot ?? undefined,
+    openingScreenshot: row.opening_screenshot ?? undefined,
+    closingScreenshot: row.closing_screenshot ?? row.screenshot ?? undefined,
+    // legacy field kept for compatibility in older UI codepaths
+    screenshot: row.screenshot ?? row.closing_screenshot ?? undefined,
     rating: row.rating ?? undefined,
   };
 }
@@ -101,7 +108,9 @@ export async function insertTrade(
     result: trade.result ?? null,
     currency: trade.currency ?? null,
     time: trade.time ?? null,
-    screenshot: trade.screenshot ?? null,
+    screenshot: trade.screenshot ?? trade.closingScreenshot ?? null,
+    opening_screenshot: trade.openingScreenshot ?? null,
+    closing_screenshot: trade.closingScreenshot ?? trade.screenshot ?? null,
     rating: trade.rating != null ? Math.round(trade.rating) : null,
   };
   console.log("[insertTrade] Inserting row into trades", row);

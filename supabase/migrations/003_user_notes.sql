@@ -15,22 +15,26 @@ create unique index if not exists user_notes_user_id_category_idx
 
 alter table public.user_notes enable row level security;
 
+drop policy if exists "Users can read own notes" on public.user_notes;
 create policy "Users can read own notes"
   on public.user_notes
   for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can upsert own notes" on public.user_notes;
 create policy "Users can upsert own notes"
   on public.user_notes
   for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own notes" on public.user_notes;
 create policy "Users can update own notes"
   on public.user_notes
   for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own notes" on public.user_notes;
 create policy "Users can delete own notes"
   on public.user_notes
   for delete

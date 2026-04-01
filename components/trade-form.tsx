@@ -62,6 +62,7 @@ export default function TradeForm() {
     LEGACY_TRADE_ENTRY_DRAFT_KEYS
   );
   const [submitting, setSubmitting] = useState(false);
+  const [openingScreenshot, setOpeningScreenshot] = useState<string | null>(null);
 
   const { market, pair, lotSize, entryPrice, stopLoss, takeProfit, session, direction, notes } = form;
 
@@ -87,6 +88,7 @@ export default function TradeForm() {
       direction: direction || undefined,
       lotSize: lotSize.trim() || undefined,
       notes: notes.trim() || undefined,
+      openingScreenshot: openingScreenshot ?? undefined,
     };
     setSubmitting(true);
     try {
@@ -99,6 +101,7 @@ export default function TradeForm() {
         );
       }
       resetForm();
+      setOpeningScreenshot(null);
       alert("Trade opened. Close it from the Live Trades tab when done.");
     } catch (err) {
       logError(err);
@@ -214,13 +217,55 @@ export default function TradeForm() {
         rows={2}
       />
 
+      <div className="mb-4">
+        <p className="mb-1 text-xs text-zinc-500">Opening screenshot (Before)</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="cursor-pointer rounded-lg border border-sky-500/50 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-300 hover:bg-sky-500/20">
+            {openingScreenshot ? "Change screenshot" : "Add screenshot"}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => setOpeningScreenshot(reader.result as string);
+                reader.readAsDataURL(file);
+              }}
+            />
+          </label>
+          {openingScreenshot && (
+            <button
+              type="button"
+              onClick={() => setOpeningScreenshot(null)}
+              className="rounded-lg border border-red-500/40 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+        {openingScreenshot && (
+          <div className="mt-2 w-full h-40 flex items-center justify-center rounded-lg border border-white/10 bg-black/5">
+            <img
+              src={openingScreenshot}
+              alt="Opening trade screenshot"
+              className="max-h-full max-w-full object-contain"
+            />
+          </div>
+        )}
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={submitting} className="rounded bg-sky-500 px-4 py-3 font-bold disabled:opacity-50">
           Open trade
         </button>
         <button
           type="button"
-          onClick={resetForm}
+          onClick={() => {
+            resetForm();
+            setOpeningScreenshot(null);
+          }}
           className="rounded border border-white/20 px-4 py-3 font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
         >
           Reset
