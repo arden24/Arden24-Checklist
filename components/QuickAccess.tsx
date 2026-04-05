@@ -55,7 +55,7 @@ export default function QuickAccess() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="group flex items-center justify-center rounded-xl border border-white/10 bg-zinc-950 p-2 text-sky-400 transition hover:border-sky-400/60 hover:bg-sky-500/10"
+        className="group flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/10 bg-zinc-950 p-2 text-sky-400 transition hover:border-sky-400/60 hover:bg-sky-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:min-h-0 sm:min-w-0"
         aria-label={open ? "Close quick access" : "Quick access"}
         title="Quick access"
       >

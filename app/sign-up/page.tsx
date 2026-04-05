@@ -6,7 +6,10 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import SupabaseConfigHelp from "@/components/SupabaseConfigHelp";
-import { getAuthErrorDisplay } from "@/lib/auth-errors";
+import PasswordInput from "@/components/PasswordInput";
+import { getAuthErrorDisplay, logAuthError } from "@/lib/auth-errors";
+import AppButton from "@/components/AppButton";
+import { isValidEmail } from "@/lib/auth-validation";
 
 const NOT_CONFIGURED_MESSAGE =
   "Add the environment variables shown above to .env.local and restart the dev server (npm run dev).";
@@ -33,6 +36,20 @@ export default function SignUpPage() {
     e.preventDefault();
     setError(null);
     setErrorSuggestion(null);
+    const emailTrimmed = email.trim();
+    if (!emailTrimmed) {
+      setError("Please enter your email");
+      return;
+    }
+    if (!isValidEmail(emailTrimmed)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password");
+      return;
+    }
+    setEmail(emailTrimmed);
     setLoading(true);
     try {
       if (!supabase) {
@@ -41,11 +58,12 @@ export default function SignUpPage() {
         return;
       }
       const { data, error: err } = await supabase.auth.signUp({
-        email,
+        email: emailTrimmed,
         password,
         options: { emailRedirectTo: `${window.location.origin}/dashboard` },
       });
       if (err) {
+        logAuthError("signUp", err);
         const { message: friendlyMessage, suggestion } = getAuthErrorDisplay(err);
         setError(friendlyMessage);
         setErrorSuggestion(suggestion ?? null);
@@ -62,7 +80,8 @@ export default function SignUpPage() {
       setSuccess("confirm_email");
       setLoading(false);
       router.refresh();
-    } catch {
+    } catch (caught) {
+      logAuthError("signUp catch", caught);
       setError("Something went wrong. Please try again.");
       setErrorSuggestion(null);
       setLoading(false);
@@ -76,7 +95,7 @@ export default function SignUpPage() {
   // Success: email confirmation required — show clear success state and CTA to sign in
   if (success === "confirm_email") {
     return (
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col justify-center px-4 py-12">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
         <div className="rounded-2xl border border-sky-500/20 bg-slate-900/80 p-6 shadow-lg">
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sky-500/20">
             <svg className="h-6 w-6 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
@@ -99,6 +118,11 @@ export default function SignUpPage() {
               try again
             </button>
           </p>
+          <p className="mt-4 text-center">
+            <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-300">
+              Home
+            </Link>
+          </p>
         </div>
         <p className="mt-8 text-center text-[10px] uppercase tracking-wider text-zinc-500">
           For journaling and discipline only. Not financial advice.
@@ -108,7 +132,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col justify-center px-4 py-12">
+    <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
       <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-6 shadow-lg">
         <h1 className="mb-2 text-2xl font-semibold text-white">Sign up</h1>
         <p className="mb-6 text-sm text-zinc-400">
@@ -142,35 +166,27 @@ export default function SignUpPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
               autoComplete="email"
               className="rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30"
               placeholder="you@example.com"
             />
           </label>
 
-          <label className="flex flex-col gap-2">
-            <span className="text-sm text-zinc-300">Password</span>
-            <input
-              type="password"
+          <div className="space-y-1">
+            <PasswordInput
+              label="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
+              onChange={setPassword}
               autoComplete="new-password"
-              className="rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30"
-              placeholder="••••••••"
+              disabled={loading}
+              minLength={6}
             />
             <span className="text-xs text-zinc-500">At least 6 characters</span>
-          </label>
+          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-xl bg-sky-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-sky-500 disabled:opacity-50"
-          >
-            {loading ? "Creating account…" : "Sign up"}
-          </button>
+          <AppButton type="submit" disabled={loading} className="w-full font-medium">
+            {loading ? "Creating account..." : "Sign up"}
+          </AppButton>
         </form>
 
         <p className="mt-6 text-center text-sm text-zinc-400">
@@ -180,6 +196,11 @@ export default function SignUpPage() {
             className="font-medium text-sky-400 hover:text-sky-300"
           >
             Sign in
+          </Link>
+        </p>
+        <p className="mt-4 text-center">
+          <Link href="/" className="inline-flex min-h-11 items-center text-sm text-zinc-500 hover:text-zinc-300">
+            Home
           </Link>
         </p>
       </div>

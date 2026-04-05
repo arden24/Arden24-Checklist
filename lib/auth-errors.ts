@@ -15,6 +15,8 @@ const RATE_LIMIT_PATTERNS = [
   "per hour",
   "email rate limit",
   "rate limit exceeded",
+  "over_email_send_rate_limit",
+  "too_many_requests",
 ];
 
 function isRateLimitError(message: string): boolean {
@@ -22,15 +24,110 @@ function isRateLimitError(message: string): boolean {
   return RATE_LIMIT_PATTERNS.some((p) => lower.includes(p.toLowerCase()));
 }
 
-export function getAuthErrorDisplay(error: { message: string }): AuthErrorDisplay {
-  const msg = error.message?.trim() || "An error occurred.";
+type AuthErr = {
+  message?: string;
+  status?: number;
+  code?: string;
+  name?: string;
+};
 
-  if (isRateLimitError(msg)) {
+function normalizeMessage(error: AuthErr): string {
+  return (error.message ?? "").trim();
+}
+
+/** Log raw auth errors in development without showing them to users. */
+export function logAuthError(context: string, error: unknown): void {
+  console.error(`[auth] ${context}`, error);
+}
+
+export function getAuthErrorDisplay(error: AuthErr): AuthErrorDisplay {
+  const msg = normalizeMessage(error) || "error";
+  const code = (error.code ?? "").toLowerCase();
+  const lower = msg.toLowerCase();
+
+  if (isRateLimitError(msg) || error.status === 429) {
     return {
-      message: "Email rate limit exceeded. Too many sign-up or sign-in attempts in a short time.",
-      suggestion: "Please wait a few minutes and try again. For development, you can disable email confirmation in Supabase: Authentication → Providers → Email → turn off “Confirm email”.",
+      message: "Too many attempts. Please wait a moment and try again.",
     };
   }
 
-  return { message: msg };
+  if (
+    code === "invalid_credentials" ||
+    lower.includes("invalid login credentials") ||
+    lower.includes("invalid email or password") ||
+    lower.includes("email or password")
+  ) {
+    return { message: "Email or password is incorrect." };
+  }
+
+  if (
+    code === "email_not_confirmed" ||
+    lower.includes("email not confirmed")
+  ) {
+    return {
+      message: "Please confirm your email before signing in.",
+      suggestion:
+        "Check your inbox for the confirmation link, or ask your administrator to adjust email confirmation settings.",
+    };
+  }
+
+  if (
+    lower.includes("jwt expired") ||
+    lower.includes("invalid jwt") ||
+    lower.includes("token expired") ||
+    lower.includes("invalid_grant") ||
+    code === "otp_expired" ||
+    lower.includes("flow state expired") ||
+    (lower.includes("invalid request") && lower.includes("token"))
+  ) {
+    return {
+      message: "This password reset link is invalid or has expired.",
+    };
+  }
+
+  if (
+    lower.includes("password") &&
+    (lower.includes("should be at least") ||
+      lower.includes("too short") ||
+      lower.includes("weak") ||
+      code === "weak_password")
+  ) {
+    return {
+      message: "Choose a stronger password (at least 6 characters).",
+    };
+  }
+
+  if (
+    code === "same_password" ||
+    lower.includes("same_password") ||
+    lower.includes("same password") ||
+    lower.includes("different from the old password")
+  ) {
+    return {
+      message: "Your new password must be different from your old password.",
+    };
+  }
+
+  if (
+    lower.includes("user already registered") ||
+    lower.includes("already been registered") ||
+    code === "user_already_exists"
+  ) {
+    return { message: "An account with this email may already exist. Try signing in instead." };
+  }
+
+  if (lower.includes("invalid email")) {
+    return { message: "Please enter a valid email address." };
+  }
+
+  if (
+    error.status === 503 ||
+    lower.includes("service unavailable") ||
+    lower.includes("network") ||
+    lower.includes("fetch")
+  ) {
+    return { message: "Something went wrong. Please try again." };
+  }
+
+  return { message: "Something went wrong. Please try again." };
 }

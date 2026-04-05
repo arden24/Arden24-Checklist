@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import StrategyCard from "@/components/strategy-card";
+import PageContainer from "@/components/PageContainer";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
@@ -92,11 +93,11 @@ export default function StrategiesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black px-6 py-10 text-white">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8">
-        <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <h1 className="text-4xl font-bold">Strategy Builder</h1>
+    <main className="min-h-screen min-w-0 bg-black py-8 text-white sm:py-10">
+      <PageContainer className="flex flex-col gap-8">
+        <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start sm:gap-6 md:items-center">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-bold sm:text-4xl">Strategy Builder</h1>
             <p className="mt-2 max-w-xl text-sm text-zinc-400">
               Design your playbook, define your conditions, and keep yourself
               accountable before every trade.
@@ -104,7 +105,7 @@ export default function StrategiesPage() {
           </div>
           <Link
             href="/strategies/new"
-            className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black"
+            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black touch-manipulation sm:w-auto sm:min-h-0"
           >
             + New strategy
           </Link>
@@ -150,7 +151,7 @@ export default function StrategiesPage() {
           not provide financial advice, signals, or any recommendation to buy or
           sell financial instruments.
         </p>
-      </div>
+      </PageContainer>
     </main>
   );
 }

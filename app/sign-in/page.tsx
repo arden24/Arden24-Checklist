@@ -6,7 +6,10 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import SupabaseConfigHelp from "@/components/SupabaseConfigHelp";
-import { getAuthErrorDisplay } from "@/lib/auth-errors";
+import PasswordInput from "@/components/PasswordInput";
+import { getAuthErrorDisplay, logAuthError } from "@/lib/auth-errors";
+import AppButton from "@/components/AppButton";
+import { isValidEmail } from "@/lib/auth-validation";
 
 const NOT_CONFIGURED_MESSAGE =
   "Add the environment variables shown above to .env.local and restart the dev server (npm run dev).";
@@ -32,6 +35,20 @@ export default function SignInPage() {
     e.preventDefault();
     setError(null);
     setErrorSuggestion(null);
+    const emailTrimmed = email.trim();
+    if (!emailTrimmed) {
+      setError("Please enter your email");
+      return;
+    }
+    if (!isValidEmail(emailTrimmed)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password");
+      return;
+    }
+    setEmail(emailTrimmed);
     setLoading(true);
     try {
       if (!supabase) {
@@ -40,10 +57,11 @@ export default function SignInPage() {
         return;
       }
       const { error: err } = await supabase.auth.signInWithPassword({
-        email,
+        email: emailTrimmed,
         password,
       });
       if (err) {
+        logAuthError("signInWithPassword", err);
         const { message: friendlyMessage, suggestion } = getAuthErrorDisplay(err);
         setError(friendlyMessage);
         setErrorSuggestion(suggestion ?? null);
@@ -53,7 +71,8 @@ export default function SignInPage() {
       setLoading(false);
       router.push("/dashboard");
       router.refresh();
-    } catch {
+    } catch (caught) {
+      logAuthError("signInWithPassword catch", caught);
       setError("Something went wrong. Please try again.");
       setErrorSuggestion(null);
       setLoading(false);
@@ -65,7 +84,7 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col justify-center px-4 py-12">
+    <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
       <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-6 shadow-lg">
         <h1 className="mb-2 text-2xl font-semibold text-white">Sign in</h1>
         <p className="mb-6 text-sm text-zinc-400">
@@ -99,33 +118,33 @@ export default function SignInPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
               autoComplete="email"
               className="rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30"
               placeholder="you@example.com"
             />
           </label>
 
-          <label className="flex flex-col gap-2">
-            <span className="text-sm text-zinc-300">Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              className="rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-sm text-white outline-none transition focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30"
-              placeholder="••••••••"
-            />
-          </label>
-
-          <button
-            type="submit"
+          <PasswordInput
+            label="Password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
             disabled={loading}
-            className="w-full rounded-xl bg-sky-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-sky-500 disabled:opacity-50"
-          >
-            {loading ? "Signing in…" : "Sign in"}
-          </button>
+          />
+
+          <div className="flex flex-col gap-3">
+            <AppButton type="submit" disabled={loading} className="w-full font-medium">
+              {loading ? "Logging in..." : "Sign in"}
+            </AppButton>
+            <div className="text-center">
+              <Link
+                href="/forgot-password"
+                className="text-sm font-medium text-sky-400 hover:text-sky-300"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          </div>
         </form>
 
         <p className="mt-6 text-center text-sm text-zinc-400">
@@ -135,6 +154,14 @@ export default function SignInPage() {
             className="font-medium text-sky-400 hover:text-sky-300"
           >
             Sign up
+          </Link>
+        </p>
+        <p className="mt-4 text-center">
+          <Link
+            href="/"
+            className="inline-flex min-h-11 items-center text-sm text-zinc-500 hover:text-zinc-300"
+          >
+            Home
           </Link>
         </p>
       </div>

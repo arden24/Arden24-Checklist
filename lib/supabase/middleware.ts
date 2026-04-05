@@ -16,7 +16,10 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     pathname === "/" ||
     pathname === "/sign-in" ||
-    pathname === "/sign-up";
+    pathname === "/sign-up" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname === "/auth/callback";
   // Protected routes: redirect to sign-in if not authenticated
   // (dashboard, strategies, checklist, journal, open-trades, stats, account, calculator, etc.)
 

@@ -2,26 +2,29 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
 import { loadOpenTrades } from "@/lib/journal";
 import QuickAccess from "@/components/QuickAccess";
-
-type NavItem = {
-  href: string;
-  label: string;
-  icon: ReactNode;
-  showBadge?: boolean;
-};
+import BackButton from "@/components/BackButton";
+import MobileNavDrawer from "@/components/MobileNavDrawer";
+import PublicMobileMenu from "@/components/PublicMobileMenu";
+import { getMainNavItems, isMainNavItemActive } from "@/components/main-nav";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
   const [liveTradesCount, setLiveTradesCount] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const supabase = createClient();
+  const navItems = getMainNavItems();
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!user) {
@@ -29,174 +32,101 @@ export default function Navbar() {
       return;
     }
     if (supabase) {
-      fetchOpenTrades(supabase).then((list) => setLiveTradesCount(list.length)).catch(() => setLiveTradesCount(0));
+      fetchOpenTrades(supabase)
+        .then((list) => setLiveTradesCount(list.length))
+        .catch(() => setLiveTradesCount(0));
     } else {
       setLiveTradesCount(loadOpenTrades(user?.id).length);
     }
   }, [user, supabase, pathname]);
 
-  const navItems: NavItem[] = [
-    {
-      href: "/dashboard",
-      label: "Dashboard",
-      icon: (
-        <span className="flex h-5 w-5 items-center justify-center rounded-sm border border-sky-400/60 bg-sky-500/10">
-          <svg viewBox="0 0 20 20" className="h-3 w-3 text-sky-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <rect x="3" y="3" width="5" height="5" rx="0.5" />
-            <rect x="12" y="3" width="5" height="5" rx="0.5" />
-            <rect x="3" y="12" width="5" height="5" rx="0.5" />
-            <rect x="12" y="12" width="5" height="5" rx="0.5" />
-          </svg>
-        </span>
-      ),
-    },
-    {
-      href: "/strategies",
-      label: "Strategies",
-      icon: (
-        <span className="flex h-5 w-5 items-center justify-center rounded-sm border border-blue-400/60 bg-blue-500/10">
-          <svg viewBox="0 0 20 20" className="h-3 w-3 text-blue-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M4 6h12M4 10h12M4 14h8" />
-          </svg>
-        </span>
-      ),
-    },
-    {
-      href: "/checklist",
-      label: "Checklist",
-      icon: (
-        <span className="flex h-5 w-5 items-center justify-center rounded-sm border border-purple-400/60 bg-purple-500/10">
-          <svg viewBox="0 0 20 20" className="h-3 w-3 text-purple-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M4 5h2v2H4V5z" />
-            <path d="M4 9h2v2H4V9z" />
-            <path d="M4 13h2v2H4v-2z" />
-            <path d="M9 6h7M9 10h7M9 14h4" />
-          </svg>
-        </span>
-      ),
-    },
-    {
-      href: "/open-trades",
-      label: "Live Trades",
-      showBadge: true,
-      icon: (
-        <span className="relative flex h-5 w-5 items-center justify-center rounded-sm border border-cyan-400/60 bg-cyan-500/10">
-          <svg viewBox="0 0 20 20" className="h-3 w-3 text-cyan-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M3 14l4-4 3 3 6-8" />
-            <path d="M4 16h12" />
-          </svg>
-        </span>
-      ),
-    },
-    {
-      href: "/journal",
-      label: "Journal",
-      icon: (
-        <span className="flex h-5 w-5 items-center justify-center rounded-sm border border-amber-400/60 bg-amber-500/10">
-          <svg viewBox="0 0 20 20" className="h-3 w-3 text-amber-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M4 4h12a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" />
-            <path d="M6 8h8M6 11h5" />
-          </svg>
-        </span>
-      ),
-    },
-    {
-      href: "/notes",
-      label: "Notes",
-      icon: (
-        <span className="flex h-5 w-5 items-center justify-center rounded-sm border border-sky-400/60 bg-sky-500/10">
-          <svg viewBox="0 0 20 20" className="h-3 w-3 text-sky-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M6 3h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-            <path d="M8 8h4M8 12h4" />
-          </svg>
-        </span>
-      ),
-    },
-  ];
-
   const isLandingLoggedOut = pathname === "/" && !loading && !user;
+
+  const hideBackButton =
+    pathname === "/dashboard" ||
+    (pathname === "/" && Boolean(user)) ||
+    ["/sign-in", "/sign-up", "/forgot-password"].includes(pathname);
 
   if (isLandingLoggedOut) {
     return (
-      <header className="border-b border-slate-800/80 bg-black/90 backdrop-blur-sm shadow-[0_12px_40px_rgba(15,23,42,0.9)]">
+      <header className="border-b border-slate-800/80 bg-black/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur-sm shadow-[0_12px_40px_rgba(15,23,42,0.9)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 md:gap-4 md:px-6">
           <Link
             href="/"
-            className="text-lg font-semibold tracking-tight text-white hover:text-sky-300"
+            className="min-h-11 min-w-0 shrink text-lg font-semibold tracking-tight text-white hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:min-h-0"
           >
             Arden24
           </Link>
           <div className="flex items-center gap-2">
-            <Link
-              href="/sign-in"
-              className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/sign-up"
-              className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20"
-            >
-              Sign up
-            </Link>
+            <div className="hidden items-center gap-2 sm:flex">
+              <Link
+                href="/sign-in"
+                className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/sign-up"
+                className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
+              >
+                Sign up
+              </Link>
+            </div>
+            <PublicMobileMenu />
           </div>
         </div>
       </header>
     );
   }
 
+  async function handleSignOut() {
+    await signOut();
+    router.push("/");
+    router.refresh();
+  }
+
   return (
-    <header className="border-b border-slate-800/80 bg-black/90 backdrop-blur-sm shadow-[0_12px_40px_rgba(15,23,42,0.9)]">
+    <header className="border-b border-slate-800/80 bg-black/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur-sm shadow-[0_12px_40px_rgba(15,23,42,0.9)]">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 md:gap-4 md:px-6">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 md:flex-none md:flex-initial">
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/40 text-zinc-200 touch-manipulation hover:border-sky-400/60 hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black md:hidden"
+            aria-label="Open menu"
+            aria-expanded={mobileOpen}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+            </svg>
+          </button>
+
           <Link
             href="/dashboard"
-            className="shrink-0 text-base font-semibold tracking-tight text-white hover:text-sky-300"
+            className="flex min-h-11 shrink-0 items-center text-base font-semibold tracking-tight text-white hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:min-h-0"
           >
             Arden24
           </Link>
+
           <div className="hidden sm:block">
             <QuickAccess />
           </div>
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="ml-1 hidden items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300 sm:flex"
-          >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sky-500/10">
-              <svg
-                viewBox="0 0 20 20"
-                className="h-3 w-3 text-sky-400"
-                aria-hidden="true"
-              >
-                <path
-                  d="M11.75 4.75 7 9.5l4.75 4.75"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-            <span className="hidden sm:inline">Back</span>
-          </button>
+
+          {!hideBackButton && <BackButton className="ml-0 sm:ml-1" />}
         </div>
 
         <nav className="hidden flex-1 items-center justify-center md:flex">
           <ul className="flex items-center gap-1 rounded-2xl border border-white/10 bg-black/60 px-1.5 py-1 shadow-[0_0_0_1px_rgba(30,64,175,0.4)]">
             {navItems.map((item) => {
-              const isActive =
-                item.href === "/dashboard"
-                  ? pathname === "/" || pathname.startsWith("/dashboard")
-                  : pathname.startsWith(item.href);
+              const isActive = isMainNavItemActive(pathname, item.href);
               const badgeCount = item.showBadge ? liveTradesCount : 0;
 
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors ${
+                    aria-current={isActive ? "page" : undefined}
+                    className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
                       isActive
                         ? "bg-sky-500/15 text-sky-300"
                         : "text-zinc-300 hover:bg-white/5 hover:text-white"
@@ -221,49 +151,53 @@ export default function Navbar() {
           </ul>
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="hidden md:flex md:items-center md:gap-3">
-            {!loading &&
-              (user ? (
-                <>
-                  <Link
-                    href="/account"
-                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
-                  >
-                    Account
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await signOut();
-                      router.push("/");
-                      router.refresh();
-                    }}
-                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-red-400/60 hover:text-red-300"
-                  >
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/sign-in"
-                    className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    href="/sign-up"
-                    className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20"
-                  >
-                    Sign up
-                  </Link>
-                </div>
-              ))}
-          </div>
+        <div className="hidden shrink-0 items-center gap-2 sm:gap-3 md:flex">
+          {!loading &&
+            (user ? (
+              <>
+                <Link
+                  href="/account"
+                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
+                >
+                  Account
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-red-400/60 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/sign-in"
+                  className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/sign-up"
+                  className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
+                >
+                  Sign up
+                </Link>
+              </div>
+            ))}
         </div>
       </div>
+
+      <MobileNavDrawer
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        pathname={pathname}
+        navItems={navItems}
+        liveTradesCount={liveTradesCount}
+        user={user}
+        loading={loading}
+        onSignOut={handleSignOut}
+      />
     </header>
   );
 }
-

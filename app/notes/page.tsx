@@ -206,7 +206,7 @@ export default function NotesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 sm:py-8">
+    <main className="min-h-screen min-w-0 bg-slate-950 px-4 py-6 text-white sm:px-6 sm:py-8">
       <div className="mx-auto max-w-4xl space-y-6">
         <header>
           <h1 className="text-4xl font-bold">Notes</h1>

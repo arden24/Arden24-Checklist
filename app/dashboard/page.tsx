@@ -216,7 +216,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-6 sm:py-8">
+    <main className="min-h-screen min-w-0 bg-slate-950 px-4 py-6 text-white sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl space-y-8">
         <div>
           <h1 className="text-4xl font-bold">Trading Dashboard</h1>
@@ -340,7 +340,7 @@ export default function DashboardPage() {
                 Forex · Timeframes: 1H, 15M, 5M
               </p>
 
-              <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+              <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
                 <div className="rounded-lg bg-slate-950/80 p-2">
                   <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
                     Win Rate

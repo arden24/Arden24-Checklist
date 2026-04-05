@@ -22,6 +22,9 @@ import { uploadChecklistImage } from "@/lib/supabase/checklist-images";
 import { chooseDraftSource } from "@/lib/draft-conflict";
 import { fetchUserDraft, upsertUserDraft, deleteUserDraft } from "@/lib/supabase/user-drafts";
 import { resolveChecklistImageRefs } from "@/lib/supabase/checklist-images";
+import BackButton from "@/components/BackButton";
+import PageContainer from "@/components/PageContainer";
+import AppButton from "@/components/AppButton";
 
 function normaliseChecklist(
   checklist: Strategy["checklist"]
@@ -485,21 +488,18 @@ function EditStrategyFormLoaded({
         </div>
       </div>
 
-      <div className="flex flex-wrap justify-end gap-3 border-t border-white/5 pt-4">
-        <button
+      <div className="flex flex-col-reverse gap-3 border-t border-white/5 pt-4 sm:flex-row sm:flex-wrap sm:justify-end">
+        <AppButton
           type="button"
+          variant="secondary"
           onClick={resetFormDraft}
-          className="rounded-xl border border-white/20 px-5 py-3 text-sm font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300"
+          className="w-full border-white/20 sm:w-auto"
         >
           Reset draft
-        </button>
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="inline-flex items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black disabled:opacity-70"
-        >
+        </AppButton>
+        <AppButton type="submit" variant="primary" disabled={isSaving} className="w-full sm:w-auto">
           {isSaving ? "Saving..." : "Save changes"}
-        </button>
+        </AppButton>
       </div>
     </form>
   );
@@ -507,7 +507,6 @@ function EditStrategyFormLoaded({
 
 export default function EditStrategyPage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
   const { user } = useAuth();
   const supabase = createClient();
   const strategiesKey = getStrategiesKey(user?.id);
@@ -542,29 +541,23 @@ export default function EditStrategyPage() {
 
   if (loading || !strategy) {
     return (
-      <main className="min-h-screen bg-black px-6 py-10 text-white">
-        <div className="mx-auto max-w-3xl">
+      <main className="min-h-screen min-w-0 bg-black py-8 text-white sm:py-10">
+        <PageContainer maxWidthClass="max-w-3xl">
           <p className="text-sm text-zinc-400">
             {loading ? "Loading strategy…" : "Strategy not found."}
           </p>
-        </div>
+        </PageContainer>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-black px-6 py-10 text-white">
-      <div className="mx-auto max-w-3xl">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="text-sm text-zinc-400 hover:text-zinc-200"
-        >
-          ← Back
-        </button>
+    <main className="min-h-screen min-w-0 bg-black py-8 text-white sm:py-10">
+      <PageContainer maxWidthClass="max-w-3xl">
+        <BackButton fallbackHref="/strategies" label="Back" />
 
         <header className="mt-4 space-y-2">
-          <h1 className="text-3xl font-bold">Edit strategy</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Edit strategy</h1>
           <p className="text-sm text-zinc-400">
             Update the rules and checklist for this strategy.
           </p>
@@ -577,7 +570,7 @@ export default function EditStrategyPage() {
           supabase={supabase}
           user={user}
         />
-      </div>
+      </PageContainer>
     </main>
   );
 }
