@@ -51,8 +51,8 @@ export default function ForgotPasswordPage() {
       }
       const redirectTo =
         typeof window !== "undefined"
-          ? `${window.location.origin}/reset-password`
-          : "http://localhost:3000/reset-password";
+          ? `${window.location.origin}/auth/callback?next=/reset-password`
+          : "http://localhost:3000/auth/callback?next=/reset-password";
       const { error: err } = await supabase.auth.resetPasswordForEmail(
         emailTrimmed,
         { redirectTo }
