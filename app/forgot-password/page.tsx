@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import SupabaseConfigHelp from "@/components/SupabaseConfigHelp";
 import { getAuthErrorDisplay, logAuthError } from "@/lib/auth-errors";
 import { isValidEmail } from "@/lib/auth-validation";
+import { isPasswordRecoverySession } from "@/lib/auth-recovery";
 import AppButton from "@/components/AppButton";
 
 const NOT_CONFIGURED_MESSAGE =
@@ -15,7 +16,7 @@ const NOT_CONFIGURED_MESSAGE =
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const supabase = createClient();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -24,10 +25,13 @@ export default function ForgotPasswordPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      router.replace("/dashboard");
+    if (!user) return;
+    if (isPasswordRecoverySession(session?.access_token)) {
+      router.replace("/reset-password");
+      return;
     }
-  }, [user, router]);
+    router.replace("/dashboard");
+  }, [user, session, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,9 +54,9 @@ export default function ForgotPasswordPage() {
         return;
       }
       const redirectTo =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/auth/callback?next=/reset-password`
-          : "http://localhost:3000/auth/callback?next=/reset-password";
+        typeof window !== "undefined" && window.location.hostname === "localhost"
+          ? "http://localhost:3000/auth/callback?next=/reset-password"
+          : "https://arden24.com/auth/callback?next=/reset-password";
       const { error: err } = await supabase.auth.resetPasswordForEmail(
         emailTrimmed,
         { redirectTo }

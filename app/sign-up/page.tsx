@@ -10,13 +10,14 @@ import PasswordInput from "@/components/PasswordInput";
 import { getAuthErrorDisplay, logAuthError } from "@/lib/auth-errors";
 import AppButton from "@/components/AppButton";
 import { isValidEmail } from "@/lib/auth-validation";
+import { isPasswordRecoverySession } from "@/lib/auth-recovery";
 
 const NOT_CONFIGURED_MESSAGE =
   "Add the environment variables shown above to .env.local and restart the dev server (npm run dev).";
 
 export default function SignUpPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,12 +26,15 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<"signed_in" | "confirm_email" | null>(null);
 
-  // If already logged in, redirect to dashboard
+  // If already logged in: recovery sessions must finish on /reset-password, not /dashboard
   useEffect(() => {
-    if (user) {
-      router.replace("/dashboard");
+    if (!user) return;
+    if (isPasswordRecoverySession(session?.access_token)) {
+      router.replace("/reset-password");
+      return;
     }
-  }, [user, router]);
+    router.replace("/dashboard");
+  }, [user, session, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,7 +93,7 @@ export default function SignUpPage() {
   }
 
   if (user) {
-    return null; // Redirecting to dashboard
+    return null;
   }
 
   // Success: email confirmation required — show clear success state and CTA to sign in

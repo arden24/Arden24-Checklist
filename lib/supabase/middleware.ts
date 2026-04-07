@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isPasswordRecoverySession } from "@/lib/auth-recovery";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
@@ -51,6 +52,10 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   if (!isPublicRoute && !user) {
     const signInUrl = request.nextUrl.clone();
     signInUrl.pathname = "/sign-in";
@@ -58,6 +63,17 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && (pathname === "/sign-in" || pathname === "/sign-up")) {
+    const recoveryFromQuery =
+      request.nextUrl.searchParams.get("type") === "recovery";
+    if (
+      recoveryFromQuery ||
+      isPasswordRecoverySession(session?.access_token)
+    ) {
+      const resetUrl = request.nextUrl.clone();
+      resetUrl.pathname = "/reset-password";
+      resetUrl.search = "";
+      return NextResponse.redirect(resetUrl);
+    }
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = "/dashboard";
     return NextResponse.redirect(dashboardUrl);
