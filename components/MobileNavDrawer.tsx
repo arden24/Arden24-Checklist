@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import type { User } from "@supabase/supabase-js";
 import type { MainNavItem } from "@/components/main-nav";
+import { isMainNavItemActive } from "@/components/main-nav";
 import {
-  MOBILE_EXTRA_LINKS,
-  isMainNavItemActive,
-  isMobileExtraLinkActive,
-} from "@/components/main-nav";
+  MOBILE_DRAWER_TRANSITION_MS,
+  drawerLinkFocusClass,
+  drawerMotionClass,
+  useDrawerFocusTrap,
+  useReturnFocusToTrigger,
+} from "@/lib/mobile-drawer";
 
 type MobileNavDrawerProps = {
   open: boolean;
@@ -19,6 +23,10 @@ type MobileNavDrawerProps = {
   user: User | null;
   loading: boolean;
   onSignOut: () => void;
+  /** Hamburger control — focus returns here after the drawer closes */
+  menuButtonRef: RefObject<HTMLButtonElement | null>;
+  /** Fires when the portaled surface is mounted (true) or fully torn down (false after exit animation) */
+  onDrawerVisibleChange?: (visible: boolean) => void;
 };
 
 export default function MobileNavDrawer({
@@ -30,119 +38,166 @@ export default function MobileNavDrawer({
   user,
   loading,
   onSignOut,
+  menuButtonRef,
+  onDrawerVisibleChange,
 }: MobileNavDrawerProps) {
+  const panelRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [animateIn, setAnimateIn] = useState(false);
+  const bodyOverflowRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    onDrawerVisibleChange?.(visible);
+  }, [visible, onDrawerVisibleChange]);
 
   useEffect(() => {
     if (open) {
-      document.body.style.overflow = "hidden";
-      const id = requestAnimationFrame(() => closeButtonRef.current?.focus());
-      return () => {
-        cancelAnimationFrame(id);
-        document.body.style.overflow = "";
-      };
+      setVisible(true);
+      const id = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setAnimateIn(true));
+      });
+      return () => cancelAnimationFrame(id);
     }
-    document.body.style.overflow = "";
-    return () => {
-      document.body.style.overflow = "";
-    };
+    setAnimateIn(false);
+    const t = window.setTimeout(() => setVisible(false), MOBILE_DRAWER_TRANSITION_MS);
+    return () => window.clearTimeout(t);
   }, [open]);
 
-  if (!open) return null;
+  useEffect(() => {
+    if (!mounted) return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    function closeOnDesktop() {
+      if (mq.matches) onClose();
+    }
+    mq.addEventListener("change", closeOnDesktop);
+    return () => mq.removeEventListener("change", closeOnDesktop);
+  }, [mounted, onClose]);
 
-  const linkFocus =
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950";
+  useEffect(() => {
+    if (!visible) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [visible, onClose]);
 
-  return (
-    <div className="fixed inset-0 z-[100] md:hidden" role="dialog" aria-modal="true" aria-label="Main menu">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500/40"
-        aria-label="Close menu"
+  useEffect(() => {
+    if (!visible) return;
+    bodyOverflowRef.current = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => closeButtonRef.current?.focus());
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      document.body.style.overflow = bodyOverflowRef.current ?? "";
+    };
+  }, [visible]);
+
+  useReturnFocusToTrigger(visible, menuButtonRef);
+  useDrawerFocusTrap(panelRef, visible && animateIn);
+
+  if (!mounted || !visible) return null;
+
+  const navLinkClass = (active: boolean) =>
+    `${drawerLinkFocusClass} flex w-full min-h-[3rem] shrink-0 items-center gap-3.5 rounded-xl px-3.5 py-3.5 text-[0.9375rem] font-semibold leading-snug tracking-[-0.01em] touch-manipulation transition-[color,background-color,box-shadow,border-color] duration-200 sm:text-base ${
+      active
+        ? "border border-sky-400/28 bg-sky-500/[0.11] text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.09),inset_0_1px_0_0_rgba(255,255,255,0.035)]"
+        : "border border-transparent text-zinc-400 hover:border-white/[0.06] hover:bg-white/[0.04] hover:text-zinc-100 active:bg-white/[0.06]"
+    }`;
+
+  const footerBtnClass = `${drawerLinkFocusClass} flex w-full min-h-11 items-center justify-center rounded-xl border border-white/[0.07] bg-zinc-950/70 px-4 text-sm font-medium tracking-wide text-zinc-500 touch-manipulation transition-[border-color,background-color,color,box-shadow] duration-200 hover:border-sky-400/28 hover:bg-sky-500/[0.07] hover:text-sky-100/90 active:bg-sky-500/[0.1]`;
+
+  const portal = (
+    <div
+      className="md:hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="arden-mobile-drawer-title"
+    >
+      <div
+        role="presentation"
+        aria-hidden="true"
+        className={`fixed inset-0 z-[90] bg-slate-950/75 backdrop-blur-[3px] transition-opacity motion-reduce:transition-none ${drawerMotionClass} ${
+          animateIn ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
         onClick={onClose}
       />
-      <div
-        className="absolute inset-y-0 right-0 flex w-[min(100%,20rem)] flex-col border-l border-white/10 bg-zinc-950 shadow-2xl pt-[env(safe-area-inset-top,0px)]"
-        onClick={(e) => e.stopPropagation()}
+
+      <aside
+        ref={panelRef}
+        className={`fixed top-0 right-0 z-[100] flex max-h-[100dvh] min-h-[100dvh] w-[80%] max-w-[320px] flex-col border-l border-sky-500/12 bg-gradient-to-b from-zinc-950 from-40% via-zinc-950 to-black shadow-[inset_1px_0_0_rgba(56,189,248,0.055),-24px_0_64px_rgba(0,0,0,0.52)] transition-transform motion-reduce:transition-none ${drawerMotionClass} will-change-transform ${
+          animateIn ? "translate-x-0" : "translate-x-full"
+        }`}
+        style={{
+          paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))",
+          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
+        }}
       >
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-          <span className="text-sm font-semibold text-white">Menu</span>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.055] px-4 pb-3 pt-1.5">
+          <Link
+            id="arden-mobile-drawer-title"
+            href="/dashboard"
+            onClick={onClose}
+            className={`${drawerLinkFocusClass} min-h-11 min-w-0 truncate pr-2 text-base font-semibold tracking-tight text-white drop-shadow-[0_0_14px_rgba(56,189,248,0.08)]`}
+          >
+            Arden24
+          </Link>
           <button
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className={`flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-white/10 text-zinc-300 touch-manipulation hover:bg-white/5 ${linkFocus}`}
-            aria-label="Close menu"
+            className={`${drawerLinkFocusClass} flex h-11 w-11 shrink-0 items-center justify-center self-center rounded-lg border border-white/[0.09] bg-zinc-900/65 text-zinc-400 touch-manipulation shadow-[inset_0_1px_0_0_rgba(255,255,255,0.035)] transition-[border-color,background-color,color,box-shadow] duration-200 hover:border-sky-400/32 hover:bg-sky-500/[0.09] hover:text-sky-100`}
+            aria-label="Close navigation menu"
           >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden
+            >
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
             </svg>
           </button>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4" aria-label="Primary">
-          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-            Navigate
-          </p>
-          <ul className="space-y-1">
+        <nav
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-3 [-webkit-overflow-scrolling:touch]"
+          aria-label="Primary navigation"
+        >
+          <ul className="flex flex-col gap-2">
             {navItems.map((item) => {
               const active = isMainNavItemActive(pathname, item.href);
               const badgeCount = item.showBadge ? liveTradesCount : 0;
               return (
-                <li key={item.href}>
+                <li key={item.href} className="w-full">
                   <Link
                     href={item.href}
                     onClick={onClose}
                     aria-current={active ? "page" : undefined}
-                    className={`${linkFocus} flex min-h-12 items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold touch-manipulation ${
-                      active
-                        ? "bg-sky-500/15 text-sky-200 ring-1 ring-sky-500/25"
-                        : "text-zinc-200 hover:bg-white/5"
-                    }`}
+                    className={navLinkClass(active)}
                   >
                     <span className="relative flex shrink-0">
                       {item.icon}
                       {badgeCount > 0 && (
-                        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-500 px-1 text-[10px] font-bold text-black">
+                        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-400/95 px-1 text-[10px] font-bold text-zinc-950 shadow-[0_0_6px_rgba(56,189,248,0.32)]">
                           {badgeCount > 99 ? "99+" : badgeCount}
                         </span>
                       )}
                     </span>
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-
-          <p className="mt-6 px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-            More
-          </p>
-          <ul className="space-y-1">
-            {MOBILE_EXTRA_LINKS.map((item) => {
-              const active = isMobileExtraLinkActive(pathname, item.href);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={onClose}
-                    aria-current={active ? "page" : undefined}
-                    className={`${linkFocus} flex min-h-12 items-center rounded-xl px-3 py-3 text-sm touch-manipulation ${
-                      active
-                        ? "bg-sky-500/10 font-semibold text-sky-200 ring-1 ring-sky-500/20"
-                        : "font-medium text-zinc-300 hover:bg-white/5 hover:text-white"
-                    }`}
-                  >
-                    {item.label}
+                    <span className="min-w-0 flex-1 text-left">{item.label}</span>
                   </Link>
                 </li>
               );
@@ -150,15 +205,11 @@ export default function MobileNavDrawer({
           </ul>
         </nav>
 
-        <div className="border-t border-white/10 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
+        <div className="shrink-0 border-t border-sky-500/[0.08] bg-black/22 px-4 pb-2.5 pt-3.5 backdrop-blur-[6px]">
           {!loading &&
             (user ? (
               <div className="flex flex-col gap-2">
-                <Link
-                  href="/account"
-                  onClick={onClose}
-                  className={`${linkFocus} flex min-h-12 items-center justify-center rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-medium text-zinc-200 touch-manipulation hover:border-sky-400/60`}
-                >
+                <Link href="/account" onClick={onClose} className={footerBtnClass}>
                   Account
                 </Link>
                 <button
@@ -167,7 +218,7 @@ export default function MobileNavDrawer({
                     onClose();
                     onSignOut();
                   }}
-                  className={`${linkFocus} min-h-12 rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-medium text-zinc-200 touch-manipulation hover:border-red-400/60 hover:text-red-300`}
+                  className={`${drawerLinkFocusClass} flex w-full min-h-11 items-center justify-center rounded-xl border border-white/[0.07] bg-zinc-950/55 px-4 text-sm font-medium tracking-wide text-zinc-500 touch-manipulation transition-[border-color,background-color,color] duration-200 hover:border-red-400/32 hover:bg-red-500/[0.07] hover:text-red-200/90 active:bg-red-500/[0.1]`}
                 >
                   Sign out
                 </button>
@@ -175,30 +226,25 @@ export default function MobileNavDrawer({
             ) : (
               <div className="flex flex-col gap-2">
                 <Link
-                  href="/"
-                  onClick={onClose}
-                  className={`${linkFocus} flex min-h-12 items-center justify-center rounded-xl border border-white/10 bg-black/30 px-3 text-sm font-medium text-zinc-300 touch-manipulation hover:bg-white/5`}
-                >
-                  Home
-                </Link>
-                <Link
                   href="/sign-in"
                   onClick={onClose}
-                  className={`${linkFocus} flex min-h-12 items-center justify-center rounded-xl border border-sky-400/60 bg-sky-500/10 text-sm font-medium text-sky-200 touch-manipulation`}
+                  className={`${footerBtnClass} border-sky-400/28 bg-sky-500/[0.1] text-sky-100/90 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] hover:border-sky-400/45 hover:bg-sky-500/[0.16] hover:text-white`}
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/sign-up"
                   onClick={onClose}
-                  className={`${linkFocus} flex min-h-12 items-center justify-center rounded-xl border border-sky-400/60 bg-sky-500/10 text-sm font-medium text-sky-200 touch-manipulation`}
+                  className={`${footerBtnClass} border-sky-400/28 bg-sky-500/[0.1] text-sky-100/90 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] hover:border-sky-400/45 hover:bg-sky-500/[0.16] hover:text-white`}
                 >
                   Sign up
                 </Link>
               </div>
             ))}
         </div>
-      </div>
+      </aside>
     </div>
   );
+
+  return createPortal(portal, document.body);
 }

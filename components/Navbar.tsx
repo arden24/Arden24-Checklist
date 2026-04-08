@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
@@ -19,6 +19,8 @@ export default function Navbar() {
   const { user, loading, signOut } = useAuth();
   const [liveTradesCount, setLiveTradesCount] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileDrawerOnScreen, setMobileDrawerOnScreen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const supabase = createClient();
   const navItems = getMainNavItems();
 
@@ -90,11 +92,13 @@ export default function Navbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 md:gap-4 md:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 md:flex-none md:flex-initial">
           <button
+            ref={menuButtonRef}
             type="button"
             onClick={() => setMobileOpen(true)}
             className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/40 text-zinc-200 touch-manipulation hover:border-sky-400/60 hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black md:hidden"
-            aria-label="Open menu"
-            aria-expanded={mobileOpen}
+            aria-label="Open navigation menu"
+            aria-haspopup="dialog"
+            aria-expanded={mobileOpen || mobileDrawerOnScreen}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
@@ -197,6 +201,8 @@ export default function Navbar() {
         user={user}
         loading={loading}
         onSignOut={handleSignOut}
+        menuButtonRef={menuButtonRef}
+        onDrawerVisibleChange={setMobileDrawerOnScreen}
       />
     </header>
   );
