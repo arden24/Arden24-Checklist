@@ -55,6 +55,7 @@ function parseChecklistItems(raw: unknown): ChecklistItem[] {
       imageRef: typeof o.imageRef === "string" ? o.imageRef : undefined,
       weight: Number.isFinite(Number(o.weight)) ? Number(o.weight) : 1,
       critical: Boolean(o.critical),
+      _rowKey: typeof o._rowKey === "string" ? o._rowKey : undefined,
     };
   });
 }

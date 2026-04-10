@@ -12,6 +12,11 @@ export type ChecklistItem = {
   imageRef?: string;
   weight: number;
   critical: boolean;
+  /**
+   * Client-only stable id for list UI (drafts / edit form). Not read from or
+   * written to the database checklist JSON.
+   */
+  _rowKey?: string;
 };
 
 export type Strategy = {
