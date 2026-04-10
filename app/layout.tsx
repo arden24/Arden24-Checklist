@@ -39,7 +39,7 @@ export default function RootLayout({
         <div className="flex min-h-screen min-w-0 flex-col bg-black text-white">
           <AuthProvider>
             <AppHeader />
-            <div className="min-w-0 flex-1 pb-[env(safe-area-inset-bottom,0px)]">
+            <div className="min-w-0 flex-1 pb-[env(safe-area-inset-bottom,0px)] pt-[var(--app-header-offset)]">
               {children}
             </div>
           </AuthProvider>

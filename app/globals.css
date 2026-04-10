@@ -5,6 +5,11 @@
   --foreground: #d4d4d4;
   --accent: #38bdf8;
   --muted: #a3a3a3;
+  /**
+   * Space for fixed Navbar: safe area + inner row (~py-3 + min-h-11 touch targets).
+   * Keep in sync with components/Navbar.tsx inner vertical padding.
+   */
+  --app-header-offset: calc(env(safe-area-inset-top, 0px) + 4.25rem);
 }
 
 @theme inline {
@@ -14,14 +19,34 @@
   --font-mono: var(--font-geist-mono);
 }
 
-html {
-  overflow-x: hidden;
+/**
+ * `overflow-x: hidden` on html/body forces `overflow-y` to compute to `auto` (CSS 2.1),
+ * which breaks `position: sticky` for the app header in WebKit / mobile Safari.
+ * `overflow-x: clip` clips horizontally without changing the vertical overflow model.
+ */
+@supports (overflow: clip) {
+  html {
+    overflow-x: clip;
+  }
+
+  body {
+    overflow-x: clip;
+  }
+}
+
+@supports not (overflow: clip) {
+  html {
+    overflow-x: hidden;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
 }

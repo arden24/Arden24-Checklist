@@ -84,7 +84,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
+    <div className="mx-auto flex min-h-[calc(100dvh-var(--app-header-offset))] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
       <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-6 shadow-lg">
         <h1 className="mb-2 text-2xl font-semibold text-white">Reset password</h1>
         <p className="mb-6 text-sm text-zinc-400">

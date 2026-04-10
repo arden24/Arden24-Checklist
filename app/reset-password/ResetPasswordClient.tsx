@@ -142,7 +142,7 @@ export default function ResetPasswordClient() {
 
   if (phase === "config") {
     return (
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
+      <div className="mx-auto flex min-h-[calc(100dvh-var(--app-header-offset))] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
         <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-6 shadow-lg">
           <h1 className="mb-2 text-xl font-semibold text-white">Set new password</h1>
           <p className="mb-4 text-sm text-zinc-400">
@@ -156,7 +156,7 @@ export default function ResetPasswordClient() {
 
   if (phase === "loading") {
     return (
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
+      <div className="mx-auto flex min-h-[calc(100dvh-var(--app-header-offset))] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
         <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-6 text-center shadow-lg">
           <p className="text-sm text-zinc-400">Checking your reset link...</p>
         </div>
@@ -166,7 +166,7 @@ export default function ResetPasswordClient() {
 
   if (phase === "invalid") {
     return (
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
+      <div className="mx-auto flex min-h-[calc(100dvh-var(--app-header-offset))] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
         <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-6 shadow-lg">
           <h1 className="mb-2 text-xl font-semibold text-white">Reset link</h1>
           <p className="mb-6 text-sm text-zinc-400">
@@ -190,7 +190,7 @@ export default function ResetPasswordClient() {
 
   if (phase === "success") {
     return (
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
+      <div className="mx-auto flex min-h-[calc(100dvh-var(--app-header-offset))] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
         <div className="rounded-2xl border border-sky-500/20 bg-slate-900/80 p-6 shadow-lg">
           <h1 className="mb-2 text-xl font-semibold text-white">Password updated</h1>
           <p className="mb-6 text-sm text-zinc-400">
@@ -208,7 +208,7 @@ export default function ResetPasswordClient() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
+    <div className="mx-auto flex min-h-[calc(100dvh-var(--app-header-offset))] w-full min-w-0 max-w-md flex-col justify-center px-4 py-12">
       <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-6 shadow-lg">
         <h1 className="mb-2 text-2xl font-semibold text-white">Set new password</h1>
         <p className="mb-6 text-sm text-zinc-400">

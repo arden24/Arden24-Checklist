@@ -13,9 +13,9 @@ import MobileNavDrawer from "@/components/MobileNavDrawer";
 import PublicMobileMenu from "@/components/PublicMobileMenu";
 import { getMainNavItems, isMainNavItemActive } from "@/components/main-nav";
 
-/** Sticky app bar: stays visible while scrolling (mobile + desktop). Portal drawers use higher z-index. */
+/** Fixed app bar; main padding uses `globals.css` `--app-header-offset`. Drawers sit above (higher z-index). */
 const appHeaderShellClass =
-  "sticky top-0 z-50 w-full border-b border-white/10 bg-black/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md shadow-[0_12px_40px_rgba(15,23,42,0.9)]";
+  "fixed inset-x-0 top-0 z-50 w-full border-b border-white/10 bg-black/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md shadow-[0_12px_40px_rgba(15,23,42,0.9)]";
 
 export default function Navbar() {
   const router = useRouter();
