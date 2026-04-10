@@ -18,7 +18,10 @@ export default function SupabaseConfigHelp() {
       </p>
       <pre className="mt-3 overflow-x-auto rounded-lg bg-black/40 p-3 font-mono text-xs leading-relaxed text-zinc-200">
         {`NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key`}
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Optional: production site URL for auth email redirects if needed outside the browser
+# NEXT_PUBLIC_SITE_URL=https://your-domain.com`}
       </pre>
       <p className="mt-3 text-amber-200/90">
         <strong className="text-amber-100">Where to find them:</strong> Supabase Dashboard → your project → <strong>Project Settings</strong> (gear) → <strong>API</strong>. Use <strong>Project URL</strong> and the <strong>anon</strong> public key.

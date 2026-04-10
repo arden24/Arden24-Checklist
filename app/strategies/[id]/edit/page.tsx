@@ -25,6 +25,7 @@ import { resolveChecklistImageRefs } from "@/lib/supabase/checklist-images";
 import BackButton from "@/components/BackButton";
 import PageContainer from "@/components/PageContainer";
 import AppButton from "@/components/AppButton";
+import ScreenshotLightbox from "@/components/ScreenshotLightbox";
 
 function normaliseChecklist(
   checklist: Strategy["checklist"]
@@ -79,6 +80,10 @@ function EditStrategyFormLoaded({
   strategyRef.current = strategy;
   const { name, description, market, timeframes, checklistItems } = form;
   const [isSaving, setIsSaving] = useState(false);
+  const [screenshotLightbox, setScreenshotLightbox] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
 
   /** Once per strategy id: merge session draft only when it matches this record (never apply "new" or another id). */
   useEffect(() => {
@@ -264,6 +269,15 @@ function EditStrategyFormLoaded({
     reader.readAsDataURL(file);
   }
 
+  function removeChecklistScreenshot(index: number) {
+    setForm((f) => ({
+      ...f,
+      checklistItems: f.checklistItems.map((item, i) =>
+        i === index ? { ...item, image: undefined, imageRef: undefined } : item
+      ),
+    }));
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) {
@@ -328,6 +342,7 @@ function EditStrategyFormLoaded({
   }
 
   return (
+    <>
     <form
       onSubmit={handleSubmit}
       className="mt-8 space-y-6 rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-lg"
@@ -415,7 +430,10 @@ function EditStrategyFormLoaded({
 
         <div className="space-y-2">
           {checklistItems.map((item, index) => (
-            <div key={index} className="space-y-2 rounded-xl bg-zinc-900/60 p-3">
+            <div
+              key={index}
+              className="min-w-0 space-y-3 rounded-xl border border-white/5 bg-zinc-900/60 p-3"
+            >
               <div className="flex flex-wrap gap-2">
                 <input
                   value={item.text}
@@ -465,23 +483,60 @@ function EditStrategyFormLoaded({
                 </button>
               </div>
 
-              <div className="flex items-center justify-between gap-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
-                  <span className="rounded-lg border border-sky-500/60 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-300">
-                    {item.image ? "Change screenshot" : "Add screenshot"}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleChecklistImageChange(index, e)}
-                  />
-                </label>
-                {item.timeframe && (
-                  <span className="rounded-full bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300">
-                    TF: {item.timeframe}
-                  </span>
-                )}
+              <div className="min-w-0 space-y-2">
+                {item.image ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setScreenshotLightbox({
+                        src: item.image!,
+                        alt: `Checklist item ${index + 1} screenshot`,
+                      })
+                    }
+                    className="group relative w-full min-w-0 max-w-full overflow-hidden rounded-xl border border-white/10 bg-black/50 outline-none ring-sky-400/0 transition hover:border-sky-500/40 hover:ring-2 hover:ring-sky-400/30 focus-visible:ring-2 focus-visible:ring-sky-400/50"
+                    aria-label={`View screenshot for checklist item ${index + 1} full size`}
+                  >
+                    <img
+                      src={item.image}
+                      alt=""
+                      className="max-h-48 w-full max-w-full object-contain object-center"
+                    />
+                    <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-2 text-center text-[10px] font-medium text-zinc-200 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+                      Tap to enlarge
+                    </span>
+                  </button>
+                ) : null}
+
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-zinc-300">
+                      <span className="rounded-lg border border-sky-500/60 bg-sky-500/10 px-2 py-1.5 text-[11px] font-semibold text-sky-300">
+                        {item.image ? "Change screenshot" : "Add screenshot"}
+                      </span>
+                      <input
+                        key={item.image ? `img-${index}` : `noimg-${index}`}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleChecklistImageChange(index, e)}
+                      />
+                    </label>
+                    {item.image ? (
+                      <button
+                        type="button"
+                        onClick={() => removeChecklistScreenshot(index)}
+                        className="rounded-lg border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-[11px] font-semibold text-red-200/90 hover:bg-red-500/20"
+                      >
+                        Remove screenshot
+                      </button>
+                    ) : null}
+                  </div>
+                  {item.timeframe ? (
+                    <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300">
+                      TF: {item.timeframe}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </div>
           ))}
@@ -502,6 +557,14 @@ function EditStrategyFormLoaded({
         </AppButton>
       </div>
     </form>
+    {screenshotLightbox ? (
+      <ScreenshotLightbox
+        src={screenshotLightbox.src}
+        alt={screenshotLightbox.alt}
+        onClose={() => setScreenshotLightbox(null)}
+      />
+    ) : null}
+    </>
   );
 }
 

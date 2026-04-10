@@ -8,6 +8,7 @@ import PasswordInput from "@/components/PasswordInput";
 import SupabaseConfigHelp from "@/components/SupabaseConfigHelp";
 import { getAuthErrorDisplay, logAuthError } from "@/lib/auth-errors";
 import { isValidEmail } from "@/lib/auth-validation";
+import { getAuthCallbackRedirectUrl } from "@/lib/auth-redirect-url";
 import PageContainer from "@/components/PageContainer";
 import AppButton from "@/components/AppButton";
 
@@ -58,7 +59,7 @@ export default function AccountPage() {
     try {
       const { error: err } = await supabase.auth.updateUser(
         { email: trimmed },
-        { emailRedirectTo: `${window.location.origin}/account` }
+        { emailRedirectTo: getAuthCallbackRedirectUrl("/account") }
       );
       if (err) {
         logAuthError("updateUser email", err);

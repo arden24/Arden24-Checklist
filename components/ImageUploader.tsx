@@ -42,7 +42,7 @@ export default function ImageUploader({ storageKey }: ImageUploaderProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="w-full min-w-0 max-w-full space-y-3">
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
@@ -63,7 +63,7 @@ export default function ImageUploader({ storageKey }: ImageUploaderProps) {
           <img
             src={preview}
             alt="Strategy chart preview"
-            className="h-40 w-full object-cover"
+            className="h-40 w-full max-w-full object-cover"
           />
         </div>
       )}

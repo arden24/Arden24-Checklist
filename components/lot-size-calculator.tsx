@@ -116,7 +116,7 @@ export default function LotSizeCalculator() {
   const labelClass = "text-sm text-zinc-300";
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-lg">
+    <div className="w-full min-w-0 max-w-full rounded-2xl border border-white/10 bg-zinc-900 p-4 shadow-lg sm:p-6">
       <h2 className="mb-4 text-2xl font-semibold text-white">Lot Size Calculator</h2>
 
       <div className="mb-4">

@@ -9,6 +9,7 @@ import SupabaseConfigHelp from "@/components/SupabaseConfigHelp";
 import { getAuthErrorDisplay, logAuthError } from "@/lib/auth-errors";
 import { isValidEmail } from "@/lib/auth-validation";
 import { isPasswordRecoverySession } from "@/lib/auth-recovery";
+import { getAuthCallbackRedirectUrl } from "@/lib/auth-redirect-url";
 import AppButton from "@/components/AppButton";
 
 const NOT_CONFIGURED_MESSAGE =
@@ -53,13 +54,9 @@ export default function ForgotPasswordPage() {
         setLoading(false);
         return;
       }
-      const redirectTo =
-        typeof window !== "undefined" && window.location.hostname === "localhost"
-          ? "http://localhost:3000/auth/callback?next=/reset-password"
-          : "https://arden24.com/auth/callback?next=/reset-password";
       const { error: err } = await supabase.auth.resetPasswordForEmail(
         emailTrimmed,
-        { redirectTo }
+        { redirectTo: getAuthCallbackRedirectUrl("/reset-password") }
       );
       if (err) {
         logAuthError("resetPasswordForEmail", err);

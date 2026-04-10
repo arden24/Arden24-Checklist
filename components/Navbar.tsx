@@ -56,7 +56,7 @@ export default function Navbar() {
   if (isLandingLoggedOut) {
     return (
       <header className={appHeaderShellClass}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 md:gap-4 md:px-6">
+        <div className="mx-auto flex w-full min-w-0 max-w-6xl items-center justify-between gap-2 px-4 py-3 md:gap-4 md:px-6">
           <Link
             href="/"
             className="min-h-11 min-w-0 shrink text-lg font-semibold tracking-tight text-white hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:min-h-0"
@@ -93,7 +93,7 @@ export default function Navbar() {
 
   return (
     <header className={appHeaderShellClass}>
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 md:gap-4 md:px-6">
+      <div className="mx-auto flex w-full min-w-0 max-w-6xl items-center justify-between gap-2 px-4 py-2.5 md:gap-4 md:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 md:flex-none md:flex-initial">
           <button
             ref={menuButtonRef}

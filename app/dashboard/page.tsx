@@ -216,24 +216,24 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen min-w-0 bg-slate-950 px-4 py-6 text-white sm:px-6 sm:py-8">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <div>
-          <h1 className="text-4xl font-bold">Trading Dashboard</h1>
-          <p className="mt-3 text-zinc-400">
+    <main className="min-h-screen w-full max-w-full min-w-0 overflow-x-hidden bg-slate-950 py-6 text-white sm:py-8">
+      <div className="mx-auto w-full min-w-0 max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold break-words sm:text-4xl">Trading Dashboard</h1>
+          <p className="mt-3 max-w-prose text-zinc-400">
             Log trades, review performance, size positions, and stay
             disciplined with your strategy.
           </p>
         </div>
 
-        <section id="dashboard-summary">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <section id="dashboard-summary" className="min-w-0">
+          <div className="grid min-w-0 gap-4 *:min-w-0 md:grid-cols-2 lg:grid-cols-4">
             <SummaryCard title="Total Trades" value={String(stats.total)} subtitle="Closed trades" />
             <SummaryCard title="Live Trades" value={String(stats.openTradesCount)} subtitle="Currently open positions" />
             <SummaryCard title="Net P/L" value={stats.netPnlStr} subtitle="Total from closed trades" />
             <SummaryCard title="Win Rate" value={`${stats.winRate}%`} subtitle="Profitable closed trades" />
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid min-w-0 gap-4 *:min-w-0 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryCard
               title="Best Day"
               value={stats.bestDay ? formatPnl(stats.bestDay.pnl) : "—"}
@@ -274,7 +274,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-4">
+          <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 p-4">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-white">Log trade</h2>
               <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
@@ -290,8 +290,8 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <section id="dashboard-performance" className="space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+        <section id="dashboard-performance" className="min-w-0 space-y-4">
+          <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-5">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-white">Performance</h2>
               <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">
@@ -306,9 +306,9 @@ export default function DashboardPage() {
 
         <section
           id="dashboard-strategies"
-          className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_minmax(0,0.9fr)]"
+          className="grid min-w-0 gap-6 *:min-w-0 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_minmax(0,0.9fr)]"
         >
-          <div className="space-y-4 rounded-2xl border border-sky-500/30 bg-slate-950/70 p-4">
+          <div className="min-w-0 space-y-4 rounded-2xl border border-sky-500/30 bg-slate-950/70 p-4">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-white">Best Strategy</h2>
               <span className="text-[10px] uppercase tracking-[0.16em] text-sky-400">
@@ -324,7 +324,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="space-y-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+          <div className="min-w-0 space-y-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold text-white">Current Strategy</h2>
               <Link
@@ -407,7 +407,10 @@ export default function DashboardPage() {
           />
         </section>
 
-        <section id="dashboard-reset" className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
+        <section
+          id="dashboard-reset"
+          className="min-w-0 rounded-2xl border border-red-500/20 bg-red-500/5 p-5"
+        >
           <h2 className="text-sm font-semibold text-zinc-200">Reset account data</h2>
           <p className="mt-1 text-xs text-zinc-500">
             Permanently delete all your strategies, closed trades, open trades, and reset stats to zero. You will be asked to confirm twice.
@@ -422,7 +425,7 @@ export default function DashboardPage() {
           </button>
         </section>
 
-        <p className="pt-2 text-[11px] text-zinc-500">
+        <p className="min-w-0 pt-2 text-[11px] leading-relaxed text-zinc-500 break-words">
           This app is designed for trading discipline, journaling and
           self-review. Arden24 is a product of Arden Ventures Ltd. Not financial advice.
         </p>

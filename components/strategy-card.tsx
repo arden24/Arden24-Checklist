@@ -36,19 +36,19 @@ export default function StrategyCard({
   );
 
   return (
-    <article className="flex flex-col justify-between rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-lg">
-      <div>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-xl font-semibold text-white">{strategy.name}</h3>
-            <p className="mt-1 text-sm text-zinc-400">
+    <article className="flex w-full min-w-0 max-w-full flex-col justify-between rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-lg">
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="break-words text-xl font-semibold text-white">{strategy.name}</h3>
+            <p className="mt-1 break-words text-sm text-zinc-400">
               {strategy.market} · {strategy.timeframes}
             </p>
           </div>
         </div>
 
         {strategy.description && (
-          <p className="mt-3 text-sm text-zinc-300">{strategy.description}</p>
+          <p className="mt-3 break-words text-sm text-zinc-300">{strategy.description}</p>
         )}
 
         {checklistItems.length > 0 && (
@@ -60,11 +60,11 @@ export default function StrategyCard({
               {checklistItems.map((item, index) => (
                 <li
                   key={index}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-zinc-800/60 px-3 py-2"
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-zinc-800/60 px-3 py-2"
                 >
-                  <div className="flex flex-1 items-start gap-2">
+                  <div className="flex min-w-0 flex-1 items-start gap-2">
                     <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-400" />
-                    <span>{item.text}</span>
+                    <span className="min-w-0 break-words">{item.text}</span>
                   </div>
                   {item.timeframe && (
                     <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] text-zinc-300">

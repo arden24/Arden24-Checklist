@@ -24,6 +24,18 @@
  * which breaks `position: sticky` for the app header in WebKit / mobile Safari.
  * `overflow-x: clip` clips horizontally without changing the vertical overflow model.
  */
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 @supports (overflow: clip) {
   html {
     overflow-x: clip;

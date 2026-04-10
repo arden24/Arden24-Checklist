@@ -189,7 +189,7 @@ export default function PerformanceChart() {
 
   if (!mounted) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+      <div className="w-full min-w-0 max-w-full rounded-2xl border border-white/10 bg-slate-950/60 p-4">
         <div>
           <h2 className="text-sm font-semibold text-white">Performance Overview</h2>
           <p className="text-xs text-zinc-500">Wins vs losses from closed trades.</p>
@@ -202,8 +202,8 @@ export default function PerformanceChart() {
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="w-full min-w-0 max-w-full rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-white">Performance Overview</h2>
           <p className="text-xs text-zinc-500">
@@ -223,7 +223,7 @@ export default function PerformanceChart() {
         </select>
       </div>
 
-      <div className="mt-4 flex h-64 items-end gap-1 rounded-xl bg-black/40 px-2 py-3">
+      <div className="mt-4 flex h-64 min-w-0 w-full items-end gap-1 overflow-hidden rounded-xl bg-black/40 px-2 py-3">
         {chartData.map((d, i) => {
           const total = d.wins + d.losses + d.breakeven;
           const scale = maxTotal > 0 ? total / maxTotal : 0;
@@ -231,8 +231,12 @@ export default function PerformanceChart() {
           const lossH = total ? (d.losses / maxTotal) * 100 : 0;
           const beH = total ? (d.breakeven / maxTotal) * 100 : 0;
           return (
-            <div key={d.label + i} className="flex flex-1 flex-col items-center gap-0.5" title={`${d.label}: ${d.wins}W / ${d.losses}L${d.breakeven ? ` / ${d.breakeven}BE` : ""}${d.openCount ? ` · ${d.openCount} open` : ""}`}>
-              <div className="flex w-full max-w-[24px] flex-1 flex-col justify-end rounded-t bg-slate-900/80">
+            <div
+              key={d.label + i}
+              className="flex min-w-0 flex-1 flex-col items-center gap-0.5"
+              title={`${d.label}: ${d.wins}W / ${d.losses}L${d.breakeven ? ` / ${d.breakeven}BE` : ""}${d.openCount ? ` · ${d.openCount} open` : ""}`}
+            >
+              <div className="flex w-full min-w-0 max-w-[24px] flex-1 flex-col justify-end rounded-t bg-slate-900/80">
                 <div
                   className="w-full rounded-t bg-sky-400"
                   style={{ height: `${winH}%`, minHeight: winH > 0 ? "4px" : 0 }}
@@ -246,7 +250,7 @@ export default function PerformanceChart() {
                   style={{ height: `${lossH}%`, minHeight: lossH > 0 ? "4px" : 0 }}
                 />
               </div>
-              <span className="truncate text-[10px] text-zinc-400">
+              <span className="w-full min-w-0 truncate text-center text-[10px] text-zinc-400">
                 {d.label}
               </span>
             </div>

@@ -112,7 +112,10 @@ export default function TradeForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-8 rounded-xl bg-zinc-900 p-6">
+    <form
+      onSubmit={handleSubmit}
+      className="mt-8 w-full min-w-0 max-w-full rounded-xl bg-zinc-900 p-4 sm:p-6"
+    >
       <h2 className="mb-4 text-xl font-bold">Log trade (open)</h2>
       <p className="mb-4 text-xs text-zinc-400">
         Log the trade when you enter. Add the outcome later from Live Trades.
@@ -152,14 +155,14 @@ export default function TradeForm() {
 
       <div className="mb-3">
         <p className="mb-2 text-xs font-medium text-zinc-400">Entry, stop loss & take profit</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
           <input
             type="number"
             step="any"
             placeholder="Entry"
             value={entryPrice}
             onChange={(e) => setForm((f) => ({ ...f, entryPrice: e.target.value }))}
-            className="w-full rounded bg-zinc-800 p-3 text-sm text-white"
+            className="min-w-0 w-full rounded bg-zinc-800 p-3 text-sm text-white"
           />
           <input
             type="number"
@@ -167,7 +170,7 @@ export default function TradeForm() {
             placeholder="Stop loss"
             value={stopLoss}
             onChange={(e) => setForm((f) => ({ ...f, stopLoss: e.target.value }))}
-            className="w-full rounded bg-zinc-800 p-3 text-sm text-white"
+            className="min-w-0 w-full rounded bg-zinc-800 p-3 text-sm text-white"
           />
           <input
             type="number"
@@ -175,7 +178,7 @@ export default function TradeForm() {
             placeholder="Take profit"
             value={takeProfit}
             onChange={(e) => setForm((f) => ({ ...f, takeProfit: e.target.value }))}
-            className="w-full rounded bg-zinc-800 p-3 text-sm text-white"
+            className="min-w-0 w-full rounded bg-zinc-800 p-3 text-sm text-white"
           />
         </div>
         {rrLabel && (

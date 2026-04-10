@@ -8,7 +8,7 @@ export default function StrategyChecklist({
   items,
 }: StrategyChecklistProps) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+    <div className="w-full min-w-0 max-w-full rounded-2xl border border-white/10 bg-slate-950/60 p-4">
       <h3 className="text-sm font-semibold text-white">{title}</h3>
       <p className="mt-1 text-xs text-zinc-500">
         Tick off each condition before entering a trade.
@@ -24,7 +24,7 @@ export default function StrategyChecklist({
               type="checkbox"
               className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-slate-950 text-sky-500 focus:ring-0"
             />
-            <span>{item}</span>
+            <span className="min-w-0 break-words">{item}</span>
           </label>
         ))}
       </div>

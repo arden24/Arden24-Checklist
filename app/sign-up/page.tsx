@@ -10,6 +10,7 @@ import PasswordInput from "@/components/PasswordInput";
 import { getAuthErrorDisplay, logAuthError } from "@/lib/auth-errors";
 import AppButton from "@/components/AppButton";
 import { isValidEmail } from "@/lib/auth-validation";
+import { getAuthCallbackRedirectUrl } from "@/lib/auth-redirect-url";
 import { isPasswordRecoverySession } from "@/lib/auth-recovery";
 
 const NOT_CONFIGURED_MESSAGE =
@@ -64,7 +65,7 @@ export default function SignUpPage() {
       const { data, error: err } = await supabase.auth.signUp({
         email: emailTrimmed,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+        options: { emailRedirectTo: getAuthCallbackRedirectUrl("/dashboard") },
       });
       if (err) {
         logAuthError("signUp", err);
