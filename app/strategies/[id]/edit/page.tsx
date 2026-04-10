@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  FormEvent,
+} from "react";
+import type { ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
@@ -30,38 +38,8 @@ import BackButton from "@/components/BackButton";
 import PageContainer from "@/components/PageContainer";
 import AppButton from "@/components/AppButton";
 import ScreenshotLightbox from "@/components/ScreenshotLightbox";
-
-/** Standard timeframe options for the picker; any number can be attached per confluence. */
-const TF_PRESETS = [
-  "1m",
-  "5m",
-  "15m",
-  "30m",
-  "1H",
-  "2H",
-  "4H",
-  "1D",
-  "1W",
-] as const;
-
-/** Delimiter for multiple timeframes in the single checklist `timeframe` field (schema unchanged). */
-const TF_TAG_SEP = " · ";
-
-function parseTimeframeTags(raw: string): string[] {
-  const s = raw.trim();
-  if (!s) return [];
-  return s
-    .split(TF_TAG_SEP)
-    .map((t) => t.trim())
-    .filter(Boolean);
-}
-
-function joinTimeframeTags(tags: string[]): string {
-  return tags
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .join(TF_TAG_SEP);
-}
+import { confluenceCardListClass } from "@/components/confluence-card-layout";
+import { StrategyConfluenceEditRow } from "@/components/strategy-confluence-edit-row";
 
 type MockGenerateInput = {
   summary: string;
@@ -239,165 +217,13 @@ function mockGenerateStrategyKeyPoints(
 
 const inputClass =
   "w-full min-w-0 rounded-lg border border-white/10 bg-zinc-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40";
-const rowClass =
-  "min-w-0 max-w-full overflow-hidden rounded-lg border border-white/[0.06] bg-zinc-950/40 p-3 sm:p-4";
 const hintClass = "text-[11px] text-zinc-500";
-
-/** Compact actions on each confluence card (reorder / insert / remove). */
-const confluenceActionBtnClass =
-  "inline-flex min-h-9 min-w-0 shrink-0 items-center justify-center rounded-md border border-white/10 bg-zinc-950/60 px-2.5 py-1.5 text-[11px] font-medium text-zinc-300 hover:border-white/20 hover:bg-zinc-900 hover:text-white disabled:pointer-events-none disabled:opacity-35 sm:min-h-8";
-
-/** Shared label for Score / Timeframes / Critical metadata blocks */
-const metadataLabelClass =
-  "mb-2 block text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400";
-
-/** Base shell for metadata cards (Score uses accent variants on top of this) */
-const metadataShellBase =
-  "min-w-0 rounded-lg border px-3 py-2 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]";
 
 const generateBtnClass =
   "shrink-0 rounded-lg border border-violet-400/35 bg-violet-500/10 px-3 py-2 text-xs font-semibold text-violet-100 hover:bg-violet-500/20 disabled:opacity-40 sm:px-4";
 
 const keyPointsSecondaryBtnClass =
   "shrink-0 rounded-lg border border-white/10 bg-transparent px-3 py-2 text-xs font-medium text-zinc-400 hover:border-white/20 hover:text-zinc-200 disabled:opacity-40 sm:px-4";
-
-function confluenceScoreStyles(weight: unknown): {
-  w: number;
-  shellClass: string;
-  valueClass: string;
-} {
-  const w = Number.isFinite(Number(weight)) ? Number(weight) : 1;
-  const shellClass =
-    w >= 4
-      ? "border-amber-400/35 bg-amber-500/[0.07] shadow-[0_0_0_1px_rgba(251,191,36,0.08)]"
-      : w >= 2
-        ? "border-sky-400/25 bg-sky-500/[0.06]"
-        : "border-white/10 bg-black/40";
-  const valueClass =
-    w >= 4 ? "text-amber-100" : w >= 2 ? "text-sky-100" : "text-zinc-100";
-  return { w, shellClass, valueClass };
-}
-
-type TimeframeTagsEditorProps = {
-  value: string;
-  onChange: (next: string) => void;
-  disabled?: boolean;
-};
-
-function TimeframeTagsEditor({
-  value,
-  onChange,
-  disabled,
-}: TimeframeTagsEditorProps) {
-  const tags = parseTimeframeTags(value);
-  const [custom, setCustom] = useState("");
-  const [timeframeSelectKey, setTimeframeSelectKey] = useState(0);
-
-  function setTags(next: string[]) {
-    onChange(joinTimeframeTags(next));
-  }
-
-  function addTag(t: string) {
-    const x = t.trim();
-    if (!x) return;
-    const lower = x.toLowerCase();
-    if (tags.some((a) => a.toLowerCase() === lower)) return;
-    setTags([...tags, x]);
-  }
-
-  function removeAt(i: number) {
-    setTags(tags.filter((_, j) => j !== i));
-  }
-
-  const innerSelectClass =
-    "w-full min-w-0 rounded-md border border-white/10 bg-zinc-950/90 px-2 py-2.5 text-xs font-medium text-white outline-none focus:border-sky-500/40 sm:w-[7.5rem] sm:shrink-0 sm:py-2";
-  const innerInputClass =
-    "min-h-[44px] min-w-0 flex-1 rounded-md border border-white/10 bg-zinc-950/90 px-2.5 py-2 text-xs font-medium text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40 sm:min-h-0";
-
-  return (
-    <div
-      className={`${metadataShellBase} min-h-0 max-w-full border-white/10 bg-black/40`}
-    >
-      <span className={`${metadataLabelClass} text-left`}>
-        Valid timeframes
-      </span>
-      <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
-        {tags.length === 0 ? (
-          <span className="text-[11px] font-medium text-zinc-500">
-            None selected — optional critical rule context
-          </span>
-        ) : null}
-        {tags.map((tag, i) => (
-          <span
-            key={`${i}-${tag}`}
-            className="inline-flex max-w-full min-h-9 items-center gap-1 rounded-md border border-sky-500/25 bg-sky-500/[0.08] px-2.5 py-1 text-xs font-semibold tracking-tight text-sky-100 shadow-[0_0_0_1px_rgba(56,189,248,0.06)]"
-          >
-            <span className="min-w-0 truncate">{tag}</span>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => removeAt(i)}
-              className="flex h-7 min-h-[28px] w-7 min-w-[28px] shrink-0 items-center justify-center rounded text-sm font-bold leading-none text-sky-200/80 hover:bg-red-500/20 hover:text-red-200 disabled:opacity-40"
-              aria-label={`Remove timeframe ${tag}`}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
-      {!disabled ? (
-        <div className="mt-3 flex min-w-0 max-w-full flex-col gap-2 border-t border-white/[0.06] pt-3 sm:flex-row sm:flex-wrap sm:items-stretch">
-          <select
-            key={timeframeSelectKey}
-            defaultValue=""
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v) {
-                addTag(v);
-                setTimeframeSelectKey((k) => k + 1);
-              }
-            }}
-            className={innerSelectClass}
-            aria-label="Add standard timeframe"
-          >
-            <option value="">Timeframe…</option>
-            {TF_PRESETS.map((tf) => (
-              <option key={tf} value={tf}>
-                {tf}
-              </option>
-            ))}
-          </select>
-          <div className="flex min-w-0 max-w-full flex-[1_1_12rem] items-stretch gap-2">
-            <input
-              value={custom}
-              onChange={(e) => setCustom(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addTag(custom);
-                  setCustom("");
-                }
-              }}
-              placeholder="Custom label"
-              className={innerInputClass}
-              aria-label="Custom timeframe"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                addTag(custom);
-                setCustom("");
-              }}
-              className="min-h-[44px] shrink-0 rounded-md border border-sky-500/35 bg-sky-500/15 px-3 text-xs font-semibold text-sky-100 hover:bg-sky-500/25 sm:min-h-0 sm:py-2"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 function normaliseChecklist(checklist: Strategy["checklist"]): ChecklistItem[] {
   if (!checklist || checklist.length === 0)
@@ -505,12 +331,16 @@ function EditStrategyFormLoaded({
   } | null>(null);
 
   const missingName = !name.trim();
-  const canAttemptGenerate = hasMaterialForKeyPointGenerate(
-    description,
-    scratchNotes,
-    market,
-    timeframes,
-    checklistItems,
+  const canAttemptGenerate = useMemo(
+    () =>
+      hasMaterialForKeyPointGenerate(
+        description,
+        scratchNotes,
+        market,
+        timeframes,
+        checklistItems,
+      ),
+    [description, scratchNotes, market, timeframes, checklistItems],
   );
 
   useEffect(() => {
@@ -668,23 +498,31 @@ function EditStrategyFormLoaded({
     setGenerateFeedback(null);
   }
 
-  function updateChecklistItem(index: number, value: string) {
+  const openScreenshotLightbox = useCallback((src: string, alt: string) => {
+    setScreenshotLightbox({ src, alt });
+  }, []);
+
+  const closeScreenshotLightbox = useCallback(() => {
+    setScreenshotLightbox(null);
+  }, []);
+
+  const updateChecklistItem = useCallback((index: number, value: string) => {
     setForm((f) => ({
       ...f,
       checklistItems: f.checklistItems.map((item, i) =>
         i === index ? { ...item, text: value } : item,
       ),
     }));
-  }
+  }, []);
 
-  function addConfluence() {
+  const addConfluence = useCallback(() => {
     setForm((f) => ({
       ...f,
       checklistItems: [...f.checklistItems, blankConfluence()],
     }));
-  }
+  }, []);
 
-  function removeConfluence(index: number) {
+  const removeConfluence = useCallback((index: number) => {
     setForm((f) => ({
       ...f,
       checklistItems:
@@ -692,27 +530,27 @@ function EditStrategyFormLoaded({
           ? f.checklistItems
           : f.checklistItems.filter((_, i) => i !== index),
     }));
-  }
+  }, []);
 
-  function moveConfluenceUp(index: number) {
+  const moveConfluenceUp = useCallback((index: number) => {
     if (index <= 0) return;
     setForm((f) => {
       const items = [...f.checklistItems];
       [items[index - 1], items[index]] = [items[index], items[index - 1]];
       return { ...f, checklistItems: items };
     });
-  }
+  }, []);
 
-  function moveConfluenceDown(index: number) {
+  const moveConfluenceDown = useCallback((index: number) => {
     setForm((f) => {
       if (index >= f.checklistItems.length - 1) return f;
       const items = [...f.checklistItems];
       [items[index], items[index + 1]] = [items[index + 1], items[index]];
       return { ...f, checklistItems: items };
     });
-  }
+  }, []);
 
-  function insertConfluenceAt(index: number) {
+  const insertConfluenceAt = useCallback((index: number) => {
     setForm((f) => ({
       ...f,
       checklistItems: [
@@ -721,42 +559,56 @@ function EditStrategyFormLoaded({
         ...f.checklistItems.slice(index),
       ],
     }));
-  }
+  }, []);
 
-  function updateTimeframe(index: number, value: string) {
+  const insertConfluenceBelow = useCallback((index: number) => {
+    setForm((f) => ({
+      ...f,
+      checklistItems: [
+        ...f.checklistItems.slice(0, index + 1),
+        blankConfluence(),
+        ...f.checklistItems.slice(index + 1),
+      ],
+    }));
+  }, []);
+
+  const updateTimeframe = useCallback((index: number, value: string) => {
     setForm((f) => ({
       ...f,
       checklistItems: f.checklistItems.map((item, i) =>
         i === index ? { ...item, timeframe: value } : item,
       ),
     }));
-  }
+  }, []);
 
-  function updateCriticalRule(index: number, value: boolean) {
+  const updateCriticalRule = useCallback((index: number, value: boolean) => {
     setForm((f) => ({
       ...f,
       checklistItems: f.checklistItems.map((item, i) =>
         i === index ? { ...item, critical: value } : item,
       ),
     }));
-  }
+  }, []);
 
-  function updateConfluenceWeight(index: number, value: string) {
-    const nextWeight = Number(value);
-    setForm((f) => ({
-      ...f,
-      checklistItems: f.checklistItems.map((item, i) =>
-        i === index
-          ? {
-              ...item,
-              weight: Number.isFinite(nextWeight) ? nextWeight : 1,
-            }
-          : item,
-      ),
-    }));
-  }
+  const updateConfluenceWeight = useCallback(
+    (index: number, value: string) => {
+      const nextWeight = Number(value);
+      setForm((f) => ({
+        ...f,
+        checklistItems: f.checklistItems.map((item, i) =>
+          i === index
+            ? {
+                ...item,
+                weight: Number.isFinite(nextWeight) ? nextWeight : 1,
+              }
+            : item,
+        ),
+      }));
+    },
+    [],
+  );
 
-  function bumpConfluenceWeight(index: number, delta: number) {
+  const bumpConfluenceWeight = useCallback((index: number, delta: number) => {
     setForm((f) => ({
       ...f,
       checklistItems: f.checklistItems.map((item, i) => {
@@ -767,12 +619,10 @@ function EditStrategyFormLoaded({
         return { ...item, weight: Math.max(0, w + delta) };
       }),
     }));
-  }
+  }, []);
 
-  async function handleChecklistImageChange(
-    index: number,
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) {
+  const handleChecklistImageChange = useCallback(
+    async (index: number, event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
@@ -809,16 +659,18 @@ function EditStrategyFormLoaded({
       }));
     };
     reader.readAsDataURL(file);
-  }
+  },
+    [supabase, user],
+  );
 
-  function removeChecklistScreenshot(index: number) {
+  const removeChecklistScreenshot = useCallback((index: number) => {
     setForm((f) => ({
       ...f,
       checklistItems: f.checklistItems.map((item, i) =>
         i === index ? { ...item, image: undefined, imageRef: undefined } : item,
       ),
     }));
-  }
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -889,7 +741,10 @@ function EditStrategyFormLoaded({
   const ringName =
     saveAttempted && missingName ? "ring-1 ring-amber-500/30" : "";
 
-  const filledConfluences = checklistItems.filter((i) => i.text.trim()).length;
+  const filledConfluences = useMemo(
+    () => checklistItems.filter((i) => i.text.trim()).length,
+    [checklistItems],
+  );
 
   return (
     <>
@@ -1023,233 +878,33 @@ function EditStrategyFormLoaded({
             </button>
           </div>
 
-          <ul className="min-w-0 max-w-full space-y-2">
+          <ul className={confluenceCardListClass}>
             {checklistItems.map((item, index) => {
-              const score = confluenceScoreStyles(item.weight);
               const rowKey = item._rowKey ?? `idx-${index}`;
-              const isFirst = index === 0;
-              const isLast = index === checklistItems.length - 1;
               return (
-                <li key={rowKey} className={rowClass}>
-                  <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 md:grid-cols-[220px_minmax(0,1fr)] md:gap-3 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-4">
-                    <div className="min-w-0 max-w-full">
-                      <div className="min-w-0 max-w-full">
-                        {item.image ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setScreenshotLightbox({
-                                src: item.image!,
-                                alt: `Confluence ${index + 1}`,
-                              })
-                            }
-                            className="flex max-h-[180px] w-full max-w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/40 md:max-h-[200px] lg:max-h-[220px]"
-                          >
-                            <img
-                              src={item.image}
-                              alt=""
-                              className="max-h-[180px] max-w-full object-contain md:max-h-[200px] lg:max-h-[220px]"
-                            />
-                          </button>
-                        ) : (
-                          <label className="flex max-h-[180px] min-h-[90px] w-full max-w-full min-w-0 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-white/12 bg-zinc-950/60 p-2 text-center md:max-h-[200px] lg:max-h-[220px]">
-                            <span className="text-[10px] leading-tight text-zinc-500">
-                              Add screenshot
-                            </span>
-                            <input
-                              key={`n-${rowKey}`}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) =>
-                                handleChecklistImageChange(index, e)
-                              }
-                            />
-                          </label>
-                        )}
-                        {item.image ? (
-                          <div className="mt-2 flex min-w-0 max-w-full flex-wrap items-center gap-1.5 gap-y-1">
-                            <label className="min-w-0 cursor-pointer text-[10px] text-sky-300/90">
-                              <span className="inline-block rounded border border-sky-500/40 bg-sky-500/10 px-2 py-0.5">
-                                Change
-                              </span>
-                              <input
-                                key={`img-${rowKey}`}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) =>
-                                  handleChecklistImageChange(index, e)
-                                }
-                              />
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => removeChecklistScreenshot(index)}
-                              className="shrink-0 text-[10px] text-red-300/80 hover:text-red-200"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="flex min-w-0 max-w-full flex-col gap-3 md:gap-4">
-                      <textarea
-                        value={item.text}
-                        onChange={(e) =>
-                          updateChecklistItem(index, e.target.value)
-                        }
-                        placeholder="Critical confluence rule — e.g. Liquidity sweep confirmed"
-                        rows={2}
-                        className={`${inputClass} min-h-[90px] min-w-0 max-h-[140px] w-full max-w-full resize-y sm:max-h-[160px] lg:max-h-[180px]`}
-                      />
-
-                      <div className="flex min-w-0 max-w-full flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-4">
-                        <div
-                          className={`${metadataShellBase} flex w-full min-w-0 shrink-0 flex-col items-stretch lg:w-[12.5rem] lg:max-w-[13.5rem] ${score.shellClass}`}
-                        >
-                          <span className={`${metadataLabelClass} text-center`}>
-                            Score
-                          </span>
-                          <div className="flex min-w-0 items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => bumpConfluenceWeight(index, -1)}
-                              className="flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-md border border-white/10 bg-zinc-950/80 text-lg font-semibold leading-none text-zinc-300 hover:border-white/20 hover:bg-zinc-900 hover:text-white sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0"
-                              aria-label="Decrease score"
-                            >
-                              -
-                            </button>
-                            <input
-                              type="number"
-                              inputMode="numeric"
-                              min={0}
-                              step={1}
-                              value={score.w}
-                              onChange={(e) =>
-                                updateConfluenceWeight(index, e.target.value)
-                              }
-                              className={`h-11 min-h-[44px] min-w-0 flex-1 rounded-md border border-white/10 bg-zinc-950/90 py-2 text-center text-lg font-semibold tabular-nums outline-none [appearance:textfield] [-moz-appearance:textfield] focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/20 sm:h-10 sm:min-h-0 sm:w-[4.5rem] sm:flex-none sm:text-base [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${score.valueClass}`}
-                              aria-label={`Checklist score for confluence ${index + 1}`}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => bumpConfluenceWeight(index, 1)}
-                              className="flex h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 items-center justify-center rounded-md border border-white/10 bg-zinc-950/80 text-lg font-semibold leading-none text-zinc-300 hover:border-white/20 hover:bg-zinc-900 hover:text-white sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0"
-                              aria-label="Increase score"
-                            >
-                              +
-                            </button>
-                          </div>
-                          <span className="mt-2 text-center text-[10px] font-medium text-zinc-500">
-                            Checklist points
-                          </span>
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <TimeframeTagsEditor
-                            value={item.timeframe}
-                            onChange={(next) => updateTimeframe(index, next)}
-                          />
-                        </div>
-
-                        <div
-                          className={`${metadataShellBase} flex w-full min-w-0 shrink-0 flex-col border-white/10 bg-black/40 lg:w-[12.75rem] lg:max-w-[14rem] ${
-                            item.critical
-                              ? "border-amber-400/30 bg-amber-500/[0.07] shadow-[0_0_0_1px_rgba(251,191,36,0.06)]"
-                              : ""
-                          }`}
-                        >
-                          <span className={`${metadataLabelClass} text-center`}>
-                            Critical rule
-                          </span>
-                          <div className="flex rounded-lg border border-white/10 bg-zinc-950/95 p-1">
-                            <button
-                              type="button"
-                              onClick={() => updateCriticalRule(index, false)}
-                              className={`min-h-11 flex-1 rounded-md py-2.5 text-xs font-semibold transition sm:min-h-0 sm:py-2 ${
-                                !item.critical
-                                  ? "bg-white/12 text-white shadow-[0_1px_0_0_rgba(255,255,255,0.06)]"
-                                  : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
-                              }`}
-                            >
-                              Standard
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateCriticalRule(index, true)}
-                              className={`min-h-11 flex-1 rounded-md py-2.5 text-xs font-semibold transition sm:min-h-0 sm:py-2 ${
-                                item.critical
-                                  ? "border border-amber-500/35 bg-amber-500/20 text-amber-100 shadow-sm"
-                                  : "text-zinc-500 hover:bg-amber-500/10 hover:text-amber-200/90"
-                              }`}
-                            >
-                              Critical
-                            </button>
-                          </div>
-                          <span className="mt-2 text-center text-[10px] leading-snug text-zinc-600">
-                            Critical confluences must pass on the checklist
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex min-w-0 max-w-full flex-col gap-2 border-t border-white/[0.05] pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1.5 sm:gap-y-2">
-                        <span
-                          className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 sm:mr-1"
-                          aria-hidden
-                        >
-                          Step {index + 1}
-                        </span>
-                        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5 gap-y-2">
-                          <button
-                            type="button"
-                            onClick={() => moveConfluenceUp(index)}
-                            disabled={isFirst}
-                            className={confluenceActionBtnClass}
-                            aria-label="Move this confluence up"
-                          >
-                            Up
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveConfluenceDown(index)}
-                            disabled={isLast}
-                            className={confluenceActionBtnClass}
-                            aria-label="Move this confluence down"
-                          >
-                            Down
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => insertConfluenceAt(index)}
-                            className={confluenceActionBtnClass}
-                            aria-label="Add new confluence above this one"
-                          >
-                            Add above
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => insertConfluenceAt(index + 1)}
-                            className={confluenceActionBtnClass}
-                            aria-label="Add new confluence below this one"
-                          >
-                            Add below
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeConfluence(index)}
-                            className={`${confluenceActionBtnClass} border-red-500/20 text-red-300/90 hover:border-red-500/35 hover:bg-red-950/40 hover:text-red-200`}
-                            aria-label="Remove this confluence"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </li>
+                <StrategyConfluenceEditRow
+                  key={rowKey}
+                  item={item}
+                  index={index}
+                  rowKey={rowKey}
+                  isFirst={index === 0}
+                  isLast={index === checklistItems.length - 1}
+                  inputClass={inputClass}
+                  imageLoading={index < 2 ? "eager" : "lazy"}
+                  onOpenLightbox={openScreenshotLightbox}
+                  onImageChange={handleChecklistImageChange}
+                  onRemoveScreenshot={removeChecklistScreenshot}
+                  onUpdateText={updateChecklistItem}
+                  onBumpWeight={bumpConfluenceWeight}
+                  onWeightInput={updateConfluenceWeight}
+                  onTimeframeChange={updateTimeframe}
+                  onCriticalChange={updateCriticalRule}
+                  onMoveUp={moveConfluenceUp}
+                  onMoveDown={moveConfluenceDown}
+                  onInsertAbove={insertConfluenceAt}
+                  onInsertBelow={insertConfluenceBelow}
+                  onRemove={removeConfluence}
+                />
               );
             })}
           </ul>
@@ -1336,7 +991,7 @@ function EditStrategyFormLoaded({
         <ScreenshotLightbox
           src={screenshotLightbox.src}
           alt={screenshotLightbox.alt}
-          onClose={() => setScreenshotLightbox(null)}
+          onClose={closeScreenshotLightbox}
         />
       ) : null}
     </>
@@ -1346,7 +1001,7 @@ function EditStrategyFormLoaded({
 export default function EditStrategyPage() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
-  const supabaseClient = createClient();
+  const supabaseClient = useMemo(() => createClient(), []);
   const strategiesKey = getStrategiesKey(user?.id);
   const [strategy, setStrategy] = useState<Strategy | null>(null);
   const [loading, setLoading] = useState(true);

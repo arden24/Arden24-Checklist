@@ -95,7 +95,7 @@ function computeStats(closedTrades: Trade[], openTradesCount: number) {
 
 export default function JournalPage() {
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [openTradesCount, setOpenTradesCount] = useState(0);
   const [viewDate, setViewDate] = useState(() => new Date());

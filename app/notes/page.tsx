@@ -77,7 +77,7 @@ function buildEmptyByCategory(): Record<NoteCategory, string> {
 
 export default function NotesPage() {
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [activeCategory, setActiveCategory] = useState<NoteCategory>(
     NOTE_CATEGORIES[0] ?? "general_notes"
@@ -101,7 +101,6 @@ export default function NotesPage() {
       }
 
       try {
-        console.log("[notes] loading from table", getNotesTableName());
         const rows = await fetchUserNotes(supabase, safeUserId);
         if (cancelled) return;
 
@@ -169,12 +168,6 @@ export default function NotesPage() {
     setSaving(true);
     setLastSavedAt(null);
     try {
-      console.log("[notes] save start", {
-        table: getNotesTableName(),
-        category: activeCategory,
-        userId: safeUserId,
-        contentLength: activeContent.length,
-      });
       const saved = await upsertUserNote(
         supabase,
         safeUserId,

@@ -37,7 +37,13 @@ export default function ScreenshotLightbox({ src, alt, onClose }: ScreenshotLigh
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex h-[80vh] w-full items-center justify-center rounded-lg bg-black/40">
-          <img src={src} alt={alt} className="max-h-full max-w-full object-contain" />
+          <img
+            src={src}
+            alt={alt}
+            className="max-h-full max-w-full object-contain"
+            decoding="async"
+            fetchPriority="high"
+          />
         </div>
       </div>
     </div>

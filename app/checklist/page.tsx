@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChecklistConfluenceRow } from "@/components/checklist-confluence-row";
+import { confluenceCardListClass } from "@/components/confluence-card-layout";
+import ScreenshotLightbox from "@/components/ScreenshotLightbox";
 import TradeForm from "@/components/trade-form";
 import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
@@ -81,6 +84,10 @@ export default function ChecklistPage() {
   const skipNextChecklistPersistRef = useRef(false);
   const draftHydratedRef = useRef(false);
   const persistTimerRef = useRef<number | null>(null);
+  const [screenshotLightbox, setScreenshotLightbox] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
 
   const load = useCallback(() => {
     if (supabase && user) {
@@ -285,14 +292,25 @@ export default function ChecklistPage() {
     [scorableItems]
   );
 
-  function toggleItem(index: number) {
-    setChecked((prev) => {
-      const next = [...prev];
-      next[index] = !next[index];
-      if (activeId) writeChecklistDraftToSession(activeId, next);
-      return next;
-    });
-  }
+  const toggleItem = useCallback(
+    (index: number) => {
+      setChecked((prev) => {
+        const next = [...prev];
+        next[index] = !next[index];
+        if (activeId) writeChecklistDraftToSession(activeId, next);
+        return next;
+      });
+    },
+    [activeId],
+  );
+
+  const openScreenshotLightbox = useCallback((src: string, alt: string) => {
+    setScreenshotLightbox({ src, alt });
+  }, []);
+
+  const closeScreenshotLightbox = useCallback(() => {
+    setScreenshotLightbox(null);
+  }, []);
 
   function handleClearChecklistDraft() {
     if (!activeStrategy) return;
@@ -313,7 +331,14 @@ export default function ChecklistPage() {
   }
 
   return (
-    <main className="min-h-screen min-w-0 bg-slate-950 px-4 py-6 text-white sm:px-6 sm:py-8">
+    <main className="relative min-h-screen min-w-0 bg-slate-950 px-4 py-6 text-white sm:px-6 sm:py-8">
+      {screenshotLightbox ? (
+        <ScreenshotLightbox
+          src={screenshotLightbox.src}
+          alt={screenshotLightbox.alt}
+          onClose={closeScreenshotLightbox}
+        />
+      ) : null}
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
@@ -463,66 +488,28 @@ export default function ChecklistPage() {
                 )}
               </div>
 
-              <div className="space-y-3 text-sm text-zinc-100">
-                {activeStrategy &&
-                  checklistItems.map((item, index) => (
-                    <label
-                      key={index}
-                      className="flex cursor-pointer items-start gap-3 rounded-xl bg-black/40 px-3 py-2.5"
-                    >
-                      <input
-                        type="checkbox"
+              {activeStrategy && checklistItems.length === 0 ? (
+                <p className="text-xs text-zinc-500">
+                  This strategy has no checklist items yet. Edit it in the
+                  strategy builder to add rules.
+                </p>
+              ) : (
+                <ul className={confluenceCardListClass}>
+                  {activeStrategy &&
+                    checklistItems.map((item, index) => (
+                      <ChecklistConfluenceRow
+                        key={`${activeStrategy.id}-${item._rowKey ?? `cf-${index}`}`}
+                        index={index}
+                        stepNumber={index + 1}
+                        item={item}
                         checked={checked[index] ?? false}
-                        onChange={() => toggleItem(index)}
-                        className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-slate-950 text-sky-500 focus:ring-0"
+                        imageLoading={index < 2 ? "eager" : "lazy"}
+                        onToggle={toggleItem}
+                        onOpenLightbox={openScreenshotLightbox}
                       />
-                      <div className="flex flex-1 flex-col gap-2">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span>{item.text}</span>
-                            {item.critical && (
-                              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
-                                Critical
-                              </span>
-                            )}
-                          </div>
-                          {item.timeframe && (
-                            <div className="flex items-center gap-2 text-[11px] text-zinc-300">
-                              <span className="rounded-full bg-zinc-800 px-2 py-0.5">
-                                Timeframe: {item.timeframe}
-                              </span>
-                              <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-sky-200">
-                                {item.weight} pts
-                              </span>
-                            </div>
-                          )}
-                          {!item.timeframe && (
-                            <div className="flex items-center gap-2 text-[11px] text-zinc-300">
-                              <span className="rounded-full bg-sky-500/10 px-2 py-0.5 text-sky-200">
-                                {item.weight} pts
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        {item.image && (
-                          <div className="w-full h-48 flex items-center justify-center rounded-lg border border-white/10 bg-black/5 cursor-pointer transition hover:scale-[1.02]">
-                            <img
-                              src={item.image}
-                              alt="Checklist rule example"
-                              className="max-h-full max-w-full object-contain"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </label>
-                  ))}
-                {activeStrategy && checklistItems.length === 0 && (
-                  <p className="text-xs text-zinc-500">
-                    This strategy has no checklist items yet. Edit it in the
-                    strategy builder to add rules.
-                  </p>
-                )}
-              </div>
+                    ))}
+                </ul>
+              )}
 
               <div className="rounded-2xl border border-white/10 bg-black/60 p-4">
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

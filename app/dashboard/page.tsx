@@ -90,7 +90,7 @@ function computeStats(closedTrades: Trade[], openTradesCount: number) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [openTradesCount, setOpenTradesCount] = useState(0);

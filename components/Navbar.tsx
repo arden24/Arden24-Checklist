@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
@@ -12,6 +12,7 @@ import BackButton from "@/components/BackButton";
 import MobileNavDrawer from "@/components/MobileNavDrawer";
 import PublicMobileMenu from "@/components/PublicMobileMenu";
 import { getMainNavItems, isMainNavItemActive } from "@/components/main-nav";
+import { ARDEN24_TRADES_UPDATED_EVENT } from "@/lib/trades-updated";
 
 /** Fixed app bar; main padding uses `globals.css` `--app-header-offset`. Drawers sit above (higher z-index). */
 const appHeaderShellClass =
@@ -25,7 +26,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileDrawerOnScreen, setMobileDrawerOnScreen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const navItems = getMainNavItems();
 
   useEffect(() => {
@@ -37,14 +38,23 @@ export default function Navbar() {
       setLiveTradesCount(0);
       return;
     }
-    if (supabase) {
-      fetchOpenTrades(supabase)
-        .then((list) => setLiveTradesCount(list.length))
-        .catch(() => setLiveTradesCount(0));
-    } else {
-      setLiveTradesCount(loadOpenTrades(user?.id).length);
+    function refreshLiveCount() {
+      if (supabase) {
+        fetchOpenTrades(supabase)
+          .then((list) => setLiveTradesCount(list.length))
+          .catch(() => setLiveTradesCount(0));
+      } else {
+        setLiveTradesCount(loadOpenTrades(user?.id).length);
+      }
     }
-  }, [user, supabase, pathname]);
+    refreshLiveCount();
+    window.addEventListener(ARDEN24_TRADES_UPDATED_EVENT, refreshLiveCount);
+    return () =>
+      window.removeEventListener(
+        ARDEN24_TRADES_UPDATED_EVENT,
+        refreshLiveCount,
+      );
+  }, [user, supabase]);
 
   const isLandingLoggedOut = pathname === "/" && !loading && !user;
 
