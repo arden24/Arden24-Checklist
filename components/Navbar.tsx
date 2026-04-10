@@ -13,6 +13,10 @@ import MobileNavDrawer from "@/components/MobileNavDrawer";
 import PublicMobileMenu from "@/components/PublicMobileMenu";
 import { getMainNavItems, isMainNavItemActive } from "@/components/main-nav";
 
+/** Sticky app bar: stays visible while scrolling (mobile + desktop). Portal drawers use higher z-index. */
+const appHeaderShellClass =
+  "sticky top-0 z-50 w-full border-b border-white/10 bg-black/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md shadow-[0_12px_40px_rgba(15,23,42,0.9)]";
+
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -51,7 +55,7 @@ export default function Navbar() {
 
   if (isLandingLoggedOut) {
     return (
-      <header className="border-b border-slate-800/80 bg-black/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur-sm shadow-[0_12px_40px_rgba(15,23,42,0.9)]">
+      <header className={appHeaderShellClass}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3 md:gap-4 md:px-6">
           <Link
             href="/"
@@ -88,7 +92,7 @@ export default function Navbar() {
   }
 
   return (
-    <header className="border-b border-slate-800/80 bg-black/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur-sm shadow-[0_12px_40px_rgba(15,23,42,0.9)]">
+    <header className={appHeaderShellClass}>
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 md:gap-4 md:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 md:flex-none md:flex-initial">
           <button
