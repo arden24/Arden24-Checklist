@@ -35,6 +35,56 @@ function normalizeMessage(error: AuthErr): string {
   return (error.message ?? "").trim();
 }
 
+/**
+ * PostgREST / GoTrue style errors where the access JWT is missing, expired, or
+ * invalid. Used to avoid noisy devtools output and to treat failures as session
+ * recovery rather than app bugs.
+ */
+export function isSupabaseSessionExpiredLikeError(err: unknown): boolean {
+  if (err == null) return false;
+
+  if (typeof err === "object") {
+    const o = err as Record<string, unknown>;
+    const code =
+      typeof o.code === "string" ? o.code.toUpperCase() : String(o.code ?? "");
+    if (code === "PGRST301" || code === "PGRST303") return true;
+
+    const msg =
+      typeof o.message === "string"
+        ? o.message
+        : typeof o.error_description === "string"
+          ? o.error_description
+          : "";
+    const lower = msg.toLowerCase();
+    if (
+      lower.includes("jwt expired") ||
+      lower.includes("invalid jwt") ||
+      lower.includes("jwt is expired") ||
+      lower.includes("expired jwt") ||
+      lower.includes("token is expired") ||
+      lower.includes("session missing") ||
+      lower.includes("session not found") ||
+      lower.includes("invalid_grant") ||
+      lower.includes("refresh token") ||
+      lower.includes("refresh_token") ||
+      lower.includes("auth session missing")
+    ) {
+      return true;
+    }
+  }
+
+  if (err instanceof Error) {
+    const lower = err.message.toLowerCase();
+    return (
+      lower.includes("jwt expired") ||
+      lower.includes("invalid jwt") ||
+      lower.includes("session missing")
+    );
+  }
+
+  return false;
+}
+
 /** Log raw auth errors in development without showing them to users. */
 export function logAuthError(context: string, error: unknown): void {
   console.error(`[auth] ${context}`, error);

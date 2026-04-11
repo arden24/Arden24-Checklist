@@ -83,9 +83,13 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
               <button
                 type="button"
                 onClick={() =>
-                  onOpenLightbox(item.image!, `Confluence ${step}`)
+                  onOpenLightbox(
+                    item.image!,
+                    `Confluence ${step} — preview; close when done`,
+                  )
                 }
-                className={`flex ${confluenceScreenshotMaxHeightClass} w-full max-w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-black/30`}
+                className={`flex ${confluenceScreenshotMaxHeightClass} w-full max-w-full min-w-0 cursor-zoom-in items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-black/30`}
+                aria-label="Open chart screenshot preview"
               >
                 <img
                   src={item.image}
@@ -99,10 +103,14 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
               </button>
             ) : (
               <label
-                className={`flex ${confluenceScreenshotMaxHeightClass} min-h-[96px] w-full max-w-full min-w-0 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-white/14 bg-zinc-950/70 p-2 text-center`}
+                className={`flex ${confluenceScreenshotMaxHeightClass} min-h-[96px] w-full max-w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-sky-500/25 bg-zinc-950/70 p-3 text-center transition hover:border-sky-400/40 hover:bg-zinc-900/80`}
               >
-                <span className="text-[10px] leading-tight text-zinc-500">
-                  Add screenshot
+                <span className="text-[11px] font-semibold leading-tight text-sky-200/95">
+                  Add chart screenshot
+                </span>
+                <span className="max-w-[14rem] text-[10px] leading-snug text-zinc-500">
+                  Upload an example chart for this confluence (tap to choose a
+                  file).
                 </span>
                 <input
                   key={`n-${rowKey}`}
@@ -117,8 +125,8 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
           {item.image ? (
             <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5 gap-y-1">
               <label className="min-w-0 cursor-pointer text-[10px] text-sky-300/90">
-                <span className="inline-block rounded border border-sky-500/40 bg-sky-500/10 px-2 py-0.5">
-                  Change
+                <span className="inline-block rounded border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 font-medium">
+                  Replace screenshot
                 </span>
                 <input
                   key={`img-${rowKey}`}
@@ -238,48 +246,48 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
       }
       footer={
         <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5 gap-y-2">
-          <button
-            type="button"
-            onClick={() => onMoveUp(index)}
-            disabled={isFirst}
-            className={confluenceActionBtnClass}
-            aria-label="Move this confluence up"
-          >
-            Up
-          </button>
-          <button
-            type="button"
-            onClick={() => onMoveDown(index)}
-            disabled={isLast}
-            className={confluenceActionBtnClass}
-            aria-label="Move this confluence down"
-          >
-            Down
-          </button>
-          <button
-            type="button"
-            onClick={() => onInsertAbove(index)}
-            className={confluenceActionBtnClass}
-            aria-label="Add new confluence above this one"
-          >
-            Add above
-          </button>
-          <button
-            type="button"
-            onClick={() => onInsertBelow(index)}
-            className={confluenceActionBtnClass}
-            aria-label="Add new confluence below this one"
-          >
-            Add below
-          </button>
-          <button
-            type="button"
-            onClick={() => onRemove(index)}
-            className={`${confluenceActionBtnClass} border-red-500/20 text-red-300/90 hover:border-red-500/35 hover:bg-red-950/40 hover:text-red-200`}
-            aria-label="Remove this confluence"
-          >
-            Remove
-          </button>
+            <button
+              type="button"
+              onClick={() => onMoveUp(index)}
+              disabled={isFirst}
+              className={confluenceActionBtnClass}
+              aria-label="Move this confluence up in the checklist"
+            >
+              Move up
+            </button>
+            <button
+              type="button"
+              onClick={() => onMoveDown(index)}
+              disabled={isLast}
+              className={confluenceActionBtnClass}
+              aria-label="Move this confluence down in the checklist"
+            >
+              Move down
+            </button>
+            <button
+              type="button"
+              onClick={() => onInsertAbove(index)}
+              className={confluenceActionBtnClass}
+              aria-label="Insert a new confluence row above this one"
+            >
+              Row above
+            </button>
+            <button
+              type="button"
+              onClick={() => onInsertBelow(index)}
+              className={confluenceActionBtnClass}
+              aria-label="Insert a new confluence row below this one"
+            >
+              Row below
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              className={`${confluenceActionBtnClass} border-red-500/20 text-red-300/90 hover:border-red-500/35 hover:bg-red-950/40 hover:text-red-200`}
+              aria-label="Remove this confluence"
+            >
+              Remove
+            </button>
         </div>
       }
     />

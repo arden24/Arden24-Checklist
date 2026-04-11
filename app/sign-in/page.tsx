@@ -24,6 +24,19 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [errorSuggestion, setErrorSuggestion] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sessionLapsedNotice, setSessionLapsedNotice] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reason") !== "session") return;
+    setSessionLapsedNotice(true);
+    params.delete("reason");
+    const next =
+      window.location.pathname +
+      (params.toString() ? `?${params.toString()}` : "");
+    window.history.replaceState({}, "", next);
+  }, []);
 
   // If already logged in: recovery sessions must finish on /reset-password, not /dashboard
   useEffect(() => {
@@ -94,6 +107,15 @@ export default function SignInPage() {
         <p className="mb-6 text-sm text-zinc-400">
           Sign in to access your trading journal and strategies.
         </p>
+
+        {sessionLapsedNotice && (
+          <p
+            className="mb-4 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-sm text-amber-100/90"
+            role="status"
+          >
+            Your session expired. Sign in again to continue.
+          </p>
+        )}
 
         {!supabase && (
           <div className="mb-6">

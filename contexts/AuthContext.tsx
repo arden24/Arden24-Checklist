@@ -10,7 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import type { User, Session } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/client";
+import {
+  createClient,
+  registerUnhandledRejectionAuthFilter,
+  resetAuthRecoveryRedirectState,
+} from "@/lib/supabase/client";
 
 type AuthContextValue = {
   user: User | null;
@@ -28,29 +32,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
+    return registerUnhandledRejectionAuthFilter();
+  }, []);
+
+  useEffect(() => {
     if (!supabase) {
       setLoading(false);
       return;
     }
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        resetAuthRecoveryRedirectState();
+      }
+      if (event === "INITIAL_SESSION") {
+        return;
+      }
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      setLoading(false);
-    });
+    void (async () => {
+      try {
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser();
+        if (userError || !userData.user) {
+          setSession(null);
+          setUser(null);
+        } else {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const s = sessionData.session;
+          setSession(s);
+          setUser(s?.user ?? userData.user);
+        }
+      } catch {
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
 
     return () => subscription.unsubscribe();
   }, [supabase]);
 
   const signOut = useCallback(async () => {
     if (supabase) await supabase.auth.signOut();
+    resetAuthRecoveryRedirectState();
   }, [supabase]);
 
   const value: AuthContextValue = {
