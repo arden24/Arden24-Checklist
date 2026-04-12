@@ -22,7 +22,7 @@ const variants: Record<Variant, string> = {
 };
 
 const base =
-  "inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:min-h-0 sm:py-2.5";
+  "inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 text-center transition-[color,background-color,border-color,opacity,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none sm:min-h-0 sm:py-2.5";
 
 export default function AppButton({
   variant = "primary",

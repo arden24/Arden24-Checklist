@@ -86,8 +86,9 @@ export default function JournalDayDetail({
           Trades
         </p>
         {trades.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-white/10 bg-slate-900/40 p-4 text-center text-sm text-zinc-500">
-            No trades logged for this day.
+          <p className="rounded-xl border border-dashed border-white/10 bg-slate-900/40 p-4 text-center text-sm leading-relaxed text-zinc-400">
+            <span className="font-medium text-zinc-300">Nothing on this day.</span> Choose another date — or close a
+            trade and journal it so it appears here.
           </p>
         ) : (
           <div className="space-y-2">

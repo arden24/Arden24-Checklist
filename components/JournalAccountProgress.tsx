@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
@@ -497,8 +498,11 @@ function JournalAccountProgressInner({
           <div className="mt-4 rounded-xl border border-white/[0.08] bg-black/25 px-4 py-3 sm:px-5">
             <p className="text-sm font-medium text-zinc-200">No closed trades yet</p>
             <p className="mt-1 text-sm leading-relaxed text-zinc-500">
-              Profit and current balance will move automatically once you journal closed trades. Log your first
-              outcome from the Dashboard or Open Trades to begin tracking.
+              P/L and balance update when you journal outcomes. Close your first trade from{" "}
+              <Link href="/open-trades" className="font-medium text-sky-400/95 underline-offset-2 hover:underline">
+                Live Trades
+              </Link>
+              , then log the result to start tracking.
             </p>
           </div>
         ) : null}

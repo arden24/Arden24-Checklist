@@ -192,11 +192,11 @@ export default function OpenTradesPage() {
         </header>
 
         {openTrades.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/60 p-8 text-center text-sm text-zinc-400 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
-            <p className="font-medium text-zinc-200">No live trades</p>
+          <div className="rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/60 p-8 text-center text-sm leading-relaxed text-zinc-400 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
+            <p className="font-medium text-zinc-200">Nothing open right now.</p>
             <p className="mt-2">
-              Log a trade from the Dashboard or Checklist to see it here. Then
-              journal how it ended when you close it.
+              Log a trade from the dashboard or checklist. When you close it, journal the outcome here — then it
+              feeds your stats.
             </p>
           </div>
         ) : (

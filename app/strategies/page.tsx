@@ -116,7 +116,7 @@ export default function StrategiesPage() {
           </div>
           <Link
             href="/strategies/new"
-            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black touch-manipulation sm:w-auto sm:min-h-0"
+            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black touch-manipulation transition-colors duration-150 ease-out hover:bg-sky-400 active:bg-sky-600 sm:w-auto sm:min-h-0"
           >
             + New strategy
           </Link>
@@ -127,17 +127,14 @@ export default function StrategiesPage() {
             Loading strategies…
           </div>
         ) : strategies.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/60 p-8 text-sm text-zinc-300">
-            <p className="font-medium text-zinc-100">
-              No strategies saved yet.
-            </p>
+          <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/60 p-8 text-sm leading-relaxed text-zinc-400">
+            <p className="font-medium text-zinc-100">No strategies yet.</p>
             <p className="mt-2">
-              Start by creating your first strategy checklist so you can run
-              through it before every trade.
+              Save one playbook — then use the checklist before you size a trade.
             </p>
             <Link
               href="/strategies/new"
-              className="mt-4 inline-flex items-center rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-black"
+              className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-sky-500 px-4 py-2.5 text-xs font-semibold text-black transition-colors duration-150 ease-out hover:bg-sky-400 active:bg-sky-600 sm:min-h-0"
             >
               Build a strategy
             </Link>

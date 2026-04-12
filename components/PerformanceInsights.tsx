@@ -49,9 +49,9 @@ export default function PerformanceInsights({ trades }: PerformanceInsightsProps
       </div>
       <div className="space-y-2">
         {insights.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-slate-950/40 px-4 py-6 text-center text-sm text-zinc-500">
-            Not enough closed trades yet for highlights. Keep journaling — insights appear as your
-            sample grows.
+          <div className="rounded-xl border border-white/10 bg-slate-950/40 px-4 py-6 text-center text-sm leading-relaxed text-zinc-400">
+            <span className="font-medium text-zinc-300">No highlights yet.</span> Close a few trades first —
+            patterns show up here as your journal grows.
           </div>
         ) : (
           insights.map((insight) => <InsightCard key={insight.id} insight={insight} />)

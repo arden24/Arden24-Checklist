@@ -410,17 +410,14 @@ export default function ChecklistPage() {
         </header>
 
         {strategies.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/70 p-6 text-sm text-zinc-300">
-            <p className="font-medium text-zinc-100">
-              No strategies found for checklist.
-            </p>
+          <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/70 p-6 text-sm leading-relaxed text-zinc-400">
+            <p className="font-medium text-zinc-100">No strategy to run yet.</p>
             <p className="mt-2">
-              Create a strategy first so your checklist can be built from its
-              rules.
+              Save a playbook in the builder — your checklist loads from its rules.
             </p>
             <a
               href="/strategies/new"
-              className="mt-4 inline-flex items-center rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-black"
+              className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-sky-500 px-4 py-2.5 text-xs font-semibold text-black transition-colors duration-150 ease-out hover:bg-sky-400 active:bg-sky-600 sm:min-h-0"
             >
               Create a strategy
             </a>

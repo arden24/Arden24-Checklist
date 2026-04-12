@@ -117,9 +117,12 @@ export default function JournalList({ trades: tradesProp, dataReady = true }: Jo
             Loading recent trades…
           </div>
         ) : recent.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-700/80 bg-black/40 px-3 py-6 text-center text-xs text-zinc-500">
-            No closed trades yet. Open a trade from here or the Checklist, then
-            close it from the <Link href="/open-trades" className="text-sky-400 hover:underline">Live Trades</Link> tab.
+          <div className="rounded-xl border border-dashed border-slate-700/80 bg-black/40 px-3 py-6 text-center text-xs leading-relaxed text-zinc-400">
+            <span className="font-medium text-zinc-300">No trades yet.</span> Log your first trade from{" "}
+            <Link href="/open-trades" className="font-medium text-sky-400 underline-offset-2 hover:underline">
+              Live Trades
+            </Link>{" "}
+            or the checklist — then your journal and stats start tracking discipline.
           </div>
         ) : (
           recent.map((t) => (

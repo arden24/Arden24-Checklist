@@ -21,9 +21,9 @@ type AppSelectProps<T extends string> = {
 };
 
 const shellDefault =
-  "flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2.5 text-left text-sm text-white shadow-inner shadow-black/20 outline-none transition hover:border-white/20 focus-visible:border-sky-500/50 focus-visible:ring-2 focus-visible:ring-sky-500/35 disabled:cursor-not-allowed disabled:opacity-45";
+  "flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-900/90 px-3 py-2.5 text-left text-sm text-white shadow-inner shadow-black/20 outline-none transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:border-white/20 focus-visible:border-sky-500/50 focus-visible:ring-2 focus-visible:ring-sky-500/35 disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none";
 const shellCompact =
-  "flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-white/10 bg-zinc-950/90 px-2 py-2.5 text-left text-xs font-medium text-white outline-none transition hover:border-white/20 focus-visible:border-sky-500/40 focus-visible:ring-1 focus-visible:ring-sky-500/30 disabled:cursor-not-allowed disabled:opacity-45 sm:py-2";
+  "flex w-full min-w-0 items-center justify-between gap-2 rounded-md border border-white/10 bg-zinc-950/90 px-2 py-2.5 text-left text-xs font-medium text-white outline-none transition-[color,background-color,border-color,box-shadow] duration-150 ease-out hover:border-white/20 focus-visible:border-sky-500/40 focus-visible:ring-1 focus-visible:ring-sky-500/30 disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none sm:py-2";
 
 export function AppSelect<T extends string>({
   id: idProp,
@@ -174,7 +174,7 @@ export function AppSelect<T extends string>({
                 role="option"
                 aria-selected={isSelected}
                 data-idx={i}
-                className={`cursor-pointer px-3 py-2.5 text-sm outline-none ${
+                className={`cursor-pointer px-3 py-2.5 text-sm outline-none transition-colors duration-100 ease-out ${
                   isHi ? "bg-sky-500/15 text-sky-100" : "text-zinc-200"
                 } ${isSelected ? "font-semibold" : "font-normal"}`}
                 onMouseEnter={() => setHighlight(i)}

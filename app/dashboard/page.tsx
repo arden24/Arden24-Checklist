@@ -270,7 +270,7 @@ export default function DashboardPage() {
             <SummaryCard
               title="Best Day"
               value={stats.bestDay ? formatPnl(stats.bestDay.pnl) : "—"}
-              subtitle={stats.bestDay ? formatDateLabel(stats.bestDay.date) : "No data yet"}
+              subtitle={stats.bestDay ? formatDateLabel(stats.bestDay.date) : "No closed trades yet"}
             />
             <SummaryCard
               title="Worst Day"
@@ -280,7 +280,7 @@ export default function DashboardPage() {
             <SummaryCard
               title="Best Traded Asset"
               value={stats.bestTradedAsset ? stats.bestTradedAsset.name : "—"}
-              subtitle={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "No data yet"}
+              subtitle={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "No closed trades yet"}
             />
             <SummaryCard
               title="Most Traded Market"
