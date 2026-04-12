@@ -14,6 +14,9 @@ import { useSessionFormState } from "@/lib/hooks/useSessionFormState";
 import { logError } from "@/lib/log-error";
 import { parseMoneyAmountInput } from "@/lib/realised-pnl";
 import ScreenshotLightbox from "@/components/ScreenshotLightbox";
+import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useAppToast } from "@/contexts/AppToastContext";
 
 function formatDate(key: string): string {
   const [y, m, d] = key.split("-");
@@ -61,10 +64,25 @@ const CLOSE_DRAFT_INITIAL: CloseFormDraftPersisted = {
   rating: null,
 };
 
+const RESULT_OPTIONS: AppSelectOption<CloseFormState["result"]>[] = [
+  { value: "win", label: "Win" },
+  { value: "loss", label: "Loss" },
+  { value: "breakeven", label: "Breakeven" },
+];
+
+const CURRENCY_OPTIONS: AppSelectOption<CloseFormState["currency"]>[] = [
+  { value: "USD", label: "USD" },
+  { value: "GBP", label: "GBP" },
+  { value: "EUR", label: "EUR" },
+];
+
 export default function OpenTradesPage() {
   const { user } = useAuth();
+  const { pushToast } = useAppToast();
   const supabase = createClient();
   const [openTrades, setOpenTrades] = useState<OpenTrade[]>([]);
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  const [removeSubmitting, setRemoveSubmitting] = useState(false);
   const [draft, setDraft, resetCloseDraft] = useSessionFormState<CloseFormDraftPersisted>(
     "page:open-trades-close",
     CLOSE_DRAFT_INITIAL
@@ -93,18 +111,17 @@ export default function OpenTradesPage() {
     e.preventDefault();
     const parsed = parseMoneyAmountInput(closeForm.pnl.trim());
     if (closeForm.result !== "breakeven" && parsed === null) {
-      alert("Enter a valid P/L amount (you can include £ or commas).");
+      pushToast("Enter a valid P/L amount (you can include £ or commas).", "error");
       return;
     }
     if (!user?.id || !supabase) {
-      alert("You must be signed in to close a trade.");
+      pushToast("You must be signed in to close a trade.", "error");
       return;
     }
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      console.log("[OpenTrades] Closing trade — user.id:", user.id, "| session exists:", !!session, "| auth.uid():", session?.user?.id ?? "null");
       if (!session) {
-        alert("Your session has expired. Please sign in again and try closing the trade.");
+        pushToast("Your session has expired. Please sign in again and try closing the trade.", "error");
         return;
       }
       await closeTrade(
@@ -124,11 +141,12 @@ export default function OpenTradesPage() {
       loadOpenTradesList();
       resetCloseDraft();
       setClosingScreenshot(null);
+      pushToast("Trade closed and saved to your journal.", "success");
     } catch (err: unknown) {
       logError(err);
       const message = err instanceof Error ? err.message : String(err);
       const details = err && typeof err === "object" && "message" in err ? String((err as { message?: string }).message) : message;
-      alert(`Failed to save trade. ${details || "Please try again."}`);
+      pushToast(`Failed to save trade. ${details || "Please try again."}`, "error");
     }
   };
 
@@ -137,8 +155,14 @@ export default function OpenTradesPage() {
     setClosingScreenshot(null);
   };
 
-  const handleRemove = async (id: string) => {
-    if (!confirm("Remove this open trade without closing it?")) return;
+  const requestRemoveOpenTrade = (id: string) => {
+    setPendingRemoveId(id);
+  };
+
+  const confirmRemoveOpenTrade = async () => {
+    if (!pendingRemoveId) return;
+    const id = pendingRemoveId;
+    setRemoveSubmitting(true);
     try {
       if (supabase && user) {
         await deleteOpenTrade(supabase, id);
@@ -147,9 +171,13 @@ export default function OpenTradesPage() {
         removeOpenTrade(id, user?.id);
         setOpenTrades(loadOpenTrades(user?.id));
       }
+      pushToast("Open trade removed.", "success");
     } catch (err) {
       logError(err);
-      alert("Failed to remove open trade. Please try again.");
+      pushToast("Failed to remove open trade. Please try again.", "error");
+    } finally {
+      setRemoveSubmitting(false);
+      setPendingRemoveId(null);
     }
   };
 
@@ -212,7 +240,7 @@ export default function OpenTradesPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleRemove(open.id)}
+                      onClick={() => requestRemoveOpenTrade(open.id)}
                       className="rounded-xl border border-white/10 px-3 py-1.5 text-xs text-zinc-400 hover:border-red-400/40 hover:text-red-300"
                     >
                       Remove
@@ -285,23 +313,18 @@ export default function OpenTradesPage() {
                     </p>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-xs text-zinc-500">
-                          Result
-                        </label>
-                        <select
+                        <AppSelect
+                          label="Result"
+                          aria-label="Trade result"
                           value={closeForm.result}
-                          onChange={(e) =>
+                          onChange={(v) =>
                             setDraft((f) => ({
                               ...f,
-                              result: e.target.value as "win" | "loss" | "breakeven",
+                              result: v,
                             }))
                           }
-                          className="w-full rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white"
-                        >
-                          <option value="win">Win</option>
-                          <option value="loss">Loss</option>
-                          <option value="breakeven">Breakeven</option>
-                        </select>
+                          options={RESULT_OPTIONS}
+                        />
                         <p className="mt-1.5 text-[11px] leading-snug text-zinc-500">
                           {closeForm.result === "win" && "This will be saved as profit (positive P/L)."}
                           {closeForm.result === "loss" && "This will be saved as a loss (negative P/L)."}
@@ -332,23 +355,18 @@ export default function OpenTradesPage() {
                         </p>
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs text-zinc-500">
-                          Currency
-                        </label>
-                        <select
+                        <AppSelect
+                          label="Currency"
+                          aria-label="P/L currency"
                           value={closeForm.currency}
-                          onChange={(e) =>
+                          onChange={(v) =>
                             setDraft((f) => ({
                               ...f,
-                              currency: e.target.value as "USD" | "GBP" | "EUR",
+                              currency: v,
                             }))
                           }
-                          className="w-full rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white"
-                        >
-                          <option value="USD">USD</option>
-                          <option value="GBP">GBP</option>
-                          <option value="EUR">EUR</option>
-                        </select>
+                          options={CURRENCY_OPTIONS}
+                        />
                       </div>
                       <div>
                         <label className="mb-1 block text-xs text-zinc-500">
@@ -484,6 +502,18 @@ export default function OpenTradesPage() {
       {preview && (
         <ScreenshotLightbox src={preview.src} alt={preview.alt} onClose={() => setPreview(null)} />
       )}
+
+      <ConfirmDialog
+        open={pendingRemoveId !== null}
+        onClose={() => !removeSubmitting && setPendingRemoveId(null)}
+        title="Remove this open trade?"
+        description="This removes the live position without journaling a close. Use only if you logged it by mistake."
+        confirmLabel="Remove"
+        cancelLabel="Keep trade"
+        confirmVariant="destructive"
+        isLoading={removeSubmitting}
+        onConfirm={() => void confirmRemoveOpenTrade()}
+      />
     </main>
   );
 }

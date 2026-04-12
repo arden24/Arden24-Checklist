@@ -22,6 +22,8 @@ import {
   dispatchTradesUpdated,
 } from "@/lib/trades-updated";
 import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useAppToast } from "@/contexts/AppToastContext";
 
 function dateKey(d: Date): string {
   const y = d.getFullYear();
@@ -95,11 +97,14 @@ function computeStats(closedTrades: Trade[], openTradesCount: number) {
 
 export default function JournalPage() {
   const { user } = useAuth();
+  const { pushToast } = useAppToast();
   const supabase = useMemo(() => createClient(), []);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [openTradesCount, setOpenTradesCount] = useState(0);
   const [viewDate, setViewDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [tradePendingCancel, setTradePendingCancel] = useState<Trade | null>(null);
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   const load = useCallback(() => {
     if (supabase && user) {
@@ -123,25 +128,28 @@ export default function JournalPage() {
     return () => window.removeEventListener(ARDEN24_TRADES_UPDATED_EVENT, onUpdated);
   }, [load]);
 
-  const handleCancelTrade = useCallback(
-    async (trade: Trade) => {
-      if (!trade?.id) return;
-      const ok = window.confirm(
-        "Cancel this closed trade?\n\nThis will remove it from your journal, dashboard stats, and performance history."
-      );
-      if (!ok) return;
+  const requestCancelTrade = useCallback((trade: Trade) => {
+    if (!trade?.id) return;
+    setTradePendingCancel(trade);
+  }, []);
 
-      try {
-        await cancelClosedTrade(trade.id, user?.id, supabase);
-        setTrades((prev) => prev.filter((t) => t.id !== trade.id));
-        dispatchTradesUpdated();
-      } catch (err) {
-        logError(err);
-        alert("Failed to cancel trade. Please try again.");
-      }
-    },
-    [supabase, user]
-  );
+  const confirmCancelTrade = useCallback(async () => {
+    const trade = tradePendingCancel;
+    if (!trade?.id) return;
+    setCancelSubmitting(true);
+    try {
+      await cancelClosedTrade(trade.id, user?.id, supabase);
+      setTrades((prev) => prev.filter((t) => t.id !== trade.id));
+      dispatchTradesUpdated();
+      pushToast("Trade removed from your journal.", "success");
+    } catch (err) {
+      logError(err);
+      pushToast("Failed to cancel trade. Please try again.", "error");
+    } finally {
+      setCancelSubmitting(false);
+      setTradePendingCancel(null);
+    }
+  }, [tradePendingCancel, supabase, user?.id, pushToast]);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -260,7 +268,7 @@ export default function JournalPage() {
               <JournalDayDetail
                 date={selectedDate}
                 trades={tradesOnSelectedDay}
-                onCancelTrade={handleCancelTrade}
+                onCancelTrade={requestCancelTrade}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-slate-950/80 p-8 text-center">
@@ -280,6 +288,18 @@ export default function JournalPage() {
           It does not provide financial advice.
         </p>
       </div>
+
+      <ConfirmDialog
+        open={tradePendingCancel !== null}
+        onClose={() => !cancelSubmitting && setTradePendingCancel(null)}
+        title="Remove this closed trade?"
+        description="This will remove it from your journal, dashboard stats, and performance history. This cannot be undone."
+        confirmLabel="Remove trade"
+        cancelLabel="Keep trade"
+        confirmVariant="destructive"
+        isLoading={cancelSubmitting}
+        onConfirm={() => void confirmCancelTrade()}
+      />
     </main>
   );
 }

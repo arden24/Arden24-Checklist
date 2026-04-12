@@ -11,6 +11,7 @@ import {
   upsertUserNote,
 } from "@/lib/supabase/notes";
 import { logError } from "@/lib/log-error";
+import { useAppToast } from "@/contexts/AppToastContext";
 import { sessionFormFullKey } from "@/lib/hooks/useSessionFormState";
 
 const NOTES_DRAFT_KEY = sessionFormFullKey("page:notes");
@@ -77,6 +78,7 @@ function buildEmptyByCategory(): Record<NoteCategory, string> {
 
 export default function NotesPage() {
   const { user } = useAuth();
+  const { pushToast } = useAppToast();
   const supabase = useMemo(() => createClient(), []);
 
   const [activeCategory, setActiveCategory] = useState<NoteCategory>(
@@ -180,7 +182,7 @@ export default function NotesPage() {
       } catch {
         // ignore
       }
-      alert("Notes saved.");
+      pushToast("Notes saved.", "success");
     } catch (err) {
       logError(err);
       const msg = supabaseErrorMessage(err);
@@ -190,8 +192,9 @@ export default function NotesPage() {
         message: msg,
         err,
       });
-      alert(
-        `Failed to save notes.\n\n${msg}\n\nIf this persists, check the browser console for [notes] logs and confirm your Supabase table name matches (default: notes).`
+      pushToast(
+        `Could not save notes: ${msg}. Check the console for [notes] logs and your Supabase table (default: notes).`,
+        "error",
       );
     } finally {
       setSaving(false);

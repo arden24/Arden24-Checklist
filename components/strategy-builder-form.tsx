@@ -17,6 +17,8 @@ import { StrategyConfluenceEditRow } from "@/components/strategy-confluence-edit
 import { uploadChecklistImage } from "@/lib/supabase/checklist-images";
 import type { StrategyFormFields } from "@/lib/strategy-session-draft";
 import { logError } from "@/lib/log-error";
+import { useAppToast } from "@/contexts/AppToastContext";
+import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
 import { blankConfluence } from "@/lib/strategy-form-helpers";
 import {
   hasMaterialForKeyPointGenerate,
@@ -25,6 +27,20 @@ import {
 
 export const STRATEGY_BUILDER_INPUT_CLASS =
   "w-full min-w-0 rounded-lg border border-white/10 bg-zinc-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40";
+
+const MARKET_OPTIONS: AppSelectOption<string>[] = [
+  { value: "", label: "—" },
+  { value: "Forex", label: "Forex" },
+  { value: "Stocks", label: "Stocks" },
+  { value: "Indices", label: "Indices" },
+  { value: "Commodities", label: "Commodities" },
+  { value: "Cryptocurrencies", label: "Cryptocurrencies" },
+  { value: "Bonds", label: "Bonds" },
+  { value: "Futures", label: "Futures" },
+  { value: "Options", label: "Options" },
+  { value: "ETFs", label: "ETFs" },
+  { value: "CFDs", label: "CFDs" },
+];
 
 const hintClass = "text-[11px] text-zinc-500";
 
@@ -65,6 +81,7 @@ export function StrategyBuilderForm({
   onResetDraft,
   resetDraftLabel = "Reset draft",
 }: StrategyBuilderFormProps) {
+  const { pushToast } = useAppToast();
   const { name, description, market, timeframes, checklistItems } = form;
 
   const [generatedKeyPoints, setGeneratedKeyPoints] = useState<string[]>([]);
@@ -290,7 +307,7 @@ export function StrategyBuilderForm({
         }
       } catch (err) {
         logError(err);
-        alert("Failed to upload screenshot. Try again.");
+        pushToast("Failed to upload screenshot. Try again.", "error");
         return;
       }
 
@@ -531,26 +548,12 @@ export function StrategyBuilderForm({
             </div>
             <div className="grid min-w-0 gap-3 sm:grid-cols-2">
               <div>
-                <label className={`${hintClass} mb-1 block`}>Market</label>
-                <select
+                <AppSelect
+                  label="Market"
                   value={market}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, market: e.target.value }))
-                  }
-                  className={STRATEGY_BUILDER_INPUT_CLASS}
-                >
-                  <option value="">—</option>
-                  <option value="Forex">Forex</option>
-                  <option value="Stocks">Stocks</option>
-                  <option value="Indices">Indices</option>
-                  <option value="Commodities">Commodities</option>
-                  <option value="Cryptocurrencies">Cryptocurrencies</option>
-                  <option value="Bonds">Bonds</option>
-                  <option value="Futures">Futures</option>
-                  <option value="Options">Options</option>
-                  <option value="ETFs">ETFs</option>
-                  <option value="CFDs">CFDs</option>
-                </select>
+                  onChange={(v) => setForm((f) => ({ ...f, market: v }))}
+                  options={MARKET_OPTIONS}
+                />
               </div>
               <div className="sm:col-span-2">
                 <label className={`${hintClass} mb-1 block`}>

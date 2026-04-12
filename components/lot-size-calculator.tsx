@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
 import { calculateLotSize, calculateRiskAmount } from "@/lib/lot-size";
 import { useArden24SessionDraft } from "@/lib/hooks/useArden24SessionDraft";
 import {
@@ -23,6 +24,26 @@ const CURRENCIES = [
   { value: "USD", symbol: "$", label: "USD" },
   { value: "EUR", symbol: "€", label: "EUR" },
 ] as const;
+
+const LOT_MARKET_OPTIONS: AppSelectOption<string>[] = [
+  { value: "", label: "Select market type" },
+  { value: "Forex", label: "Forex" },
+  { value: "Stocks", label: "Stocks" },
+  { value: "Indices", label: "Indices" },
+  { value: "Commodities", label: "Commodities" },
+  { value: "Cryptocurrencies", label: "Cryptocurrencies" },
+  { value: "Bonds", label: "Bonds" },
+  { value: "Futures", label: "Futures" },
+  { value: "Options", label: "Options" },
+  { value: "ETFs", label: "ETFs" },
+  { value: "CFDs", label: "CFDs" },
+];
+
+const ACCOUNT_CURRENCY_OPTIONS: AppSelectOption<"GBP" | "USD" | "EUR">[] =
+  CURRENCIES.map((c) => ({
+    value: c.value,
+    label: `${c.label} (${c.symbol})`,
+  }));
 
 type RiskInputMode = "percent" | "amount";
 
@@ -68,6 +89,11 @@ export default function LotSizeCalculator() {
 
   const pipValuePerStandardLot = pipValues[asset] ?? 10;
   const currency = CURRENCIES.find((c) => c.value === accountCurrency) ?? CURRENCIES[0];
+
+  const assetOptions: AppSelectOption<string>[] = useMemo(
+    () => Object.keys(pipValues).map((pair) => ({ value: pair, label: pair })),
+    [],
+  );
 
   const riskAmount = useMemo(() => {
     if (riskInputMode === "percent") {
@@ -120,48 +146,21 @@ export default function LotSizeCalculator() {
       <h2 className="mb-4 text-2xl font-semibold text-white">Lot Size Calculator</h2>
 
       <div className="mb-4">
-        <label className="flex flex-col gap-2">
-          <span className={labelClass}>Market</span>
-          <select
-            value={market}
-            onChange={(e) => setCalc((c) => ({ ...c, market: e.target.value }))}
-            className={inputClass}
-          >
-            <option value="">Select market type</option>
-            <option value="Forex">Forex</option>
-            <option value="Stocks">Stocks</option>
-            <option value="Indices">Indices</option>
-            <option value="Commodities">Commodities</option>
-            <option value="Cryptocurrencies">Cryptocurrencies</option>
-            <option value="Bonds">Bonds</option>
-            <option value="Futures">Futures</option>
-            <option value="Options">Options</option>
-            <option value="ETFs">ETFs</option>
-            <option value="CFDs">CFDs</option>
-          </select>
-        </label>
+        <AppSelect
+          label="Market"
+          value={market}
+          onChange={(v) => setCalc((c) => ({ ...c, market: v }))}
+          options={LOT_MARKET_OPTIONS}
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-2">
-          <span className={labelClass}>Account currency</span>
-          <select
-            value={accountCurrency}
-            onChange={(e) =>
-              setCalc((c) => ({
-                ...c,
-                accountCurrency: e.target.value as "GBP" | "USD" | "EUR",
-              }))
-            }
-            className={inputClass}
-          >
-            {CURRENCIES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label} ({c.symbol})
-              </option>
-            ))}
-          </select>
-        </label>
+        <AppSelect<"GBP" | "USD" | "EUR">
+          label="Account currency"
+          value={accountCurrency}
+          onChange={(v) => setCalc((c) => ({ ...c, accountCurrency: v }))}
+          options={ACCOUNT_CURRENCY_OPTIONS}
+        />
 
         <label className="flex flex-col gap-2">
           <span className={labelClass}>Account size ({currency.symbol})</span>
@@ -207,20 +206,12 @@ export default function LotSizeCalculator() {
           )}
         </div>
 
-        <label className="flex flex-col gap-2">
-          <span className={labelClass}>Asset</span>
-          <select
-            value={asset}
-            onChange={(e) => setCalc((c) => ({ ...c, asset: e.target.value }))}
-            className={inputClass}
-          >
-            {Object.keys(pipValues).map((pair) => (
-              <option key={pair} value={pair}>
-                {pair}
-              </option>
-            ))}
-          </select>
-        </label>
+        <AppSelect
+          label="Asset"
+          value={asset}
+          onChange={(v) => setCalc((c) => ({ ...c, asset: v }))}
+          options={assetOptions}
+        />
 
         <label className="flex flex-col gap-2">
           <span className={labelClass}>Stop Loss (pips)</span>

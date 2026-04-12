@@ -11,6 +11,8 @@ import {
   LEGACY_TRADE_ENTRY_DRAFT_KEYS,
 } from "@/lib/session-draft-keys";
 import { logError } from "@/lib/log-error";
+import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
+import { useAppToast } from "@/contexts/AppToastContext";
 
 function todayKey(): string {
   const d = new Date();
@@ -53,8 +55,36 @@ const TRADE_FORM_INITIAL: TradeFormFields = {
   notes: "",
 };
 
+const MARKET_OPTIONS: AppSelectOption<string>[] = [
+  { value: "", label: "Select market type" },
+  { value: "Forex", label: "Forex" },
+  { value: "Stocks", label: "Stocks" },
+  { value: "Indices", label: "Indices" },
+  { value: "Commodities", label: "Commodities" },
+  { value: "Cryptocurrencies", label: "Cryptocurrencies" },
+  { value: "Bonds", label: "Bonds" },
+  { value: "Futures", label: "Futures" },
+  { value: "Options", label: "Options" },
+  { value: "ETFs", label: "ETFs" },
+  { value: "CFDs", label: "CFDs" },
+];
+
+const SESSION_OPTIONS: AppSelectOption<string>[] = [
+  { value: "", label: "Session" },
+  { value: "Tokyo", label: "Tokyo" },
+  { value: "London", label: "London" },
+  { value: "New York", label: "New York" },
+];
+
+const DIRECTION_OPTIONS: AppSelectOption<"" | "Buy" | "Sell">[] = [
+  { value: "", label: "Direction" },
+  { value: "Buy", label: "Buy" },
+  { value: "Sell", label: "Sell" },
+];
+
 export default function TradeForm() {
   const { user } = useAuth();
+  const { pushToast } = useAppToast();
   const supabase = createClient();
   const [form, setForm, resetForm] = useArden24SessionDraft<TradeFormFields>(
     ARDEN24_TRADE_ENTRY_DRAFT_KEY,
@@ -77,7 +107,7 @@ export default function TradeForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!pair.trim()) {
-      alert("Please enter a pair or instrument.");
+      pushToast("Please enter a pair or instrument.", "error");
       return;
     }
     const open: Omit<OpenTrade, "id" | "createdAt"> = {
@@ -102,10 +132,10 @@ export default function TradeForm() {
       }
       resetForm();
       setOpeningScreenshot(null);
-      alert("Trade opened. Close it from the Live Trades tab when done.");
+      pushToast("Trade opened. Close it from the Live Trades tab when done.", "success");
     } catch (err) {
       logError(err);
-      alert("Failed to save open trade. Please try again.");
+      pushToast("Failed to save open trade. Please try again.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -121,23 +151,14 @@ export default function TradeForm() {
         Log the trade when you enter. Add the outcome later from Live Trades.
       </p>
 
-      <select
-        value={market}
-        onChange={(e) => setForm((f) => ({ ...f, market: e.target.value }))}
-        className="mb-3 w-full rounded bg-zinc-800 p-3 text-sm text-white"
-      >
-        <option value="">Select market type</option>
-        <option value="Forex">Forex</option>
-        <option value="Stocks">Stocks</option>
-        <option value="Indices">Indices</option>
-        <option value="Commodities">Commodities</option>
-        <option value="Cryptocurrencies">Cryptocurrencies</option>
-        <option value="Bonds">Bonds</option>
-        <option value="Futures">Futures</option>
-        <option value="Options">Options</option>
-        <option value="ETFs">ETFs</option>
-        <option value="CFDs">CFDs</option>
-      </select>
+      <div className="mb-3">
+        <AppSelect
+          aria-label="Market type"
+          value={market}
+          onChange={(v) => setForm((f) => ({ ...f, market: v }))}
+          options={MARKET_OPTIONS}
+        />
+      </div>
 
       <input
         placeholder="Pair / instrument (e.g. EURUSD, XAUUSD)"
@@ -188,28 +209,19 @@ export default function TradeForm() {
         )}
       </div>
 
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <select
+      <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <AppSelect
+          aria-label="Trading session"
           value={session}
-          onChange={(e) => setForm((f) => ({ ...f, session: e.target.value }))}
-          className="w-full rounded bg-zinc-800 p-3 text-sm text-white"
-        >
-          <option value="">Session</option>
-          <option value="Tokyo">Tokyo</option>
-          <option value="London">London</option>
-          <option value="New York">New York</option>
-        </select>
-        <select
+          onChange={(v) => setForm((f) => ({ ...f, session: v }))}
+          options={SESSION_OPTIONS}
+        />
+        <AppSelect
+          aria-label="Trade direction"
           value={direction}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, direction: e.target.value as "" | "Buy" | "Sell" }))
-          }
-          className="w-full rounded bg-zinc-800 p-3 text-sm text-white"
-        >
-          <option value="">Direction</option>
-          <option value="Buy">Buy</option>
-          <option value="Sell">Sell</option>
-        </select>
+          onChange={(v) => setForm((f) => ({ ...f, direction: v }))}
+          options={DIRECTION_OPTIONS}
+        />
       </div>
 
       <textarea

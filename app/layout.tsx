@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppHeader from "@/components/AppHeader";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AppToastProvider } from "@/contexts/AppToastContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,10 +39,12 @@ export default function RootLayout({
       >
         <div className="flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden bg-black text-white">
           <AuthProvider>
-            <AppHeader />
-            <div className="min-w-0 w-full max-w-full flex-1 overflow-x-hidden pb-[env(safe-area-inset-bottom,0px)] pt-[var(--app-header-offset)]">
-              {children}
-            </div>
+            <AppToastProvider>
+              <AppHeader />
+              <div className="min-w-0 w-full max-w-full flex-1 overflow-x-hidden pb-[env(safe-area-inset-bottom,0px)] pt-[var(--app-header-offset)]">
+                {children}
+              </div>
+            </AppToastProvider>
           </AuthProvider>
         </div>
       </body>

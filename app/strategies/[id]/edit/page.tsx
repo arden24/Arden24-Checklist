@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/log-error";
+import { useAppToast } from "@/contexts/AppToastContext";
 import {
   clearStrategyDraftFromSession,
   readStrategyDraftForEditPage,
@@ -54,6 +55,7 @@ function EditStrategyFormLoaded({
   user,
 }: EditStrategyFormLoadedProps) {
   const router = useRouter();
+  const { pushToast } = useAppToast();
   const [form, setForm] = useState<StrategyFormFields>(() =>
     snapshotFormFromStrategy(strategy),
   );
@@ -194,7 +196,7 @@ function EditStrategyFormLoaded({
     e.preventDefault();
     setSaveAttempted(true);
     if (!name.trim()) {
-      alert("Please add a strategy name.");
+      pushToast("Please add a strategy name.", "error");
       return;
     }
 
@@ -250,7 +252,7 @@ function EditStrategyFormLoaded({
       router.push("/strategies");
     } catch (err) {
       logError(err);
-      alert("Failed to save strategy. Please try again.");
+      pushToast("Failed to save strategy. Please try again.", "error");
     } finally {
       setIsSaving(false);
     }

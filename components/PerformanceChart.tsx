@@ -9,8 +9,17 @@ import { loadTrades, loadOpenTrades, type Trade, type OpenTrade } from "@/lib/jo
 import { logError } from "@/lib/log-error";
 import { ARDEN24_TRADES_UPDATED_EVENT } from "@/lib/trades-updated";
 import { canonicalRealisedPnl } from "@/lib/realised-pnl";
+import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
 
 type Timeframe = "days" | "weeks" | "months" | "quarters" | "years";
+
+const PERFORMANCE_TIMEFRAME_OPTIONS: AppSelectOption<Timeframe>[] = [
+  { value: "days", label: "Days (7)" },
+  { value: "weeks", label: "Weeks (12)" },
+  { value: "months", label: "Months (12)" },
+  { value: "quarters", label: "Quarters (8)" },
+  { value: "years", label: "Years (5)" },
+];
 
 type PeriodBucket = {
   label: string;
@@ -210,17 +219,13 @@ export default function PerformanceChart() {
             Wins vs losses from closed trades. Open trades shown by period.
           </p>
         </div>
-        <select
+        <AppSelect<Timeframe>
+          aria-label="Chart period"
           value={timeframe}
-          onChange={(e) => setTimeframe(e.target.value as Timeframe)}
-          className="w-full rounded-lg border border-white/10 bg-zinc-800 px-3 py-1.5 text-xs text-white outline-none sm:w-36"
-        >
-          <option value="days">Days (7)</option>
-          <option value="weeks">Weeks (12)</option>
-          <option value="months">Months (12)</option>
-          <option value="quarters">Quarters (8)</option>
-          <option value="years">Years (5)</option>
-        </select>
+          onChange={setTimeframe}
+          options={PERFORMANCE_TIMEFRAME_OPTIONS}
+          className="w-full sm:w-36"
+        />
       </div>
 
       <div className="mt-4 flex h-64 min-w-0 w-full items-end gap-1 overflow-hidden rounded-xl bg-black/40 px-2 py-3">

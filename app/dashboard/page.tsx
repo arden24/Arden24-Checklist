@@ -23,6 +23,11 @@ import { loadOpenTrades } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
 import { ARDEN24_TRADES_UPDATED_EVENT } from "@/lib/trades-updated";
 import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { TextConfirmDialog } from "@/components/TextConfirmDialog";
+import { useAppToast } from "@/contexts/AppToastContext";
+
+type ResetWizardStep = "idle" | "step1" | "step2" | "step3";
 
 const MONTH_ABBREV = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -90,11 +95,13 @@ function computeStats(closedTrades: Trade[], openTradesCount: number) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { pushToast } = useAppToast();
   const supabase = useMemo(() => createClient(), []);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [openTradesCount, setOpenTradesCount] = useState(0);
   const [isResetting, setIsResetting] = useState(false);
+  const [resetWizard, setResetWizard] = useState<ResetWizardStep>("idle");
 
   const loadTradesData = useCallback(() => {
     if (supabase && user) {
@@ -139,25 +146,7 @@ export default function DashboardPage() {
     loadStrategies();
   }, [loadStrategies]);
 
-  async function handleResetAllData() {
-    const firstConfirm = window.confirm(
-      "Reset all account data?\n\nThis will permanently delete:\n• All your strategies\n• All closed trades (journal)\n• All open trades\n• Your best strategy image\n\nYour stats will return to zero. This cannot be undone."
-    );
-    if (!firstConfirm) return;
-
-    const secondConfirm = window.confirm(
-      "Are you absolutely sure? You will need to type RESET in the next step to proceed."
-    );
-    if (!secondConfirm) return;
-
-    const typed = window.prompt(
-      "Type RESET (in capital letters) to confirm. Anything else will cancel."
-    );
-    if (typed !== "RESET") {
-      if (typed !== null) alert("Reset cancelled. You did not type RESET correctly.");
-      return;
-    }
-
+  async function executeResetAllDataConfirmed() {
     setIsResetting(true);
     try {
       if (supabase && user) {
@@ -180,11 +169,11 @@ export default function DashboardPage() {
       }
       loadTradesData();
       loadStrategies();
-      alert("All data has been reset. Your account is back to zero. The page will reload.");
+      pushToast("All data has been reset. Reloading the page…", "success");
       window.location.reload();
     } catch (err) {
       logError(err);
-      alert("Something went wrong while resetting. Please try again.");
+      pushToast("Something went wrong while resetting. Please try again.", "error");
     } finally {
       setIsResetting(false);
     }
@@ -417,7 +406,7 @@ export default function DashboardPage() {
           </p>
           <button
             type="button"
-            onClick={handleResetAllData}
+            onClick={() => setResetWizard("step1")}
             disabled={isResetting}
             className="mt-4 rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
           >
@@ -430,6 +419,47 @@ export default function DashboardPage() {
           self-review. Arden24 is a product of Arden Ventures Ltd. Not financial advice.
         </p>
       </div>
+
+      <ConfirmDialog
+        open={resetWizard === "step1"}
+        onClose={() => !isResetting && setResetWizard("idle")}
+        title="Reset all account data?"
+        description={
+          "This will permanently delete:\n• All your strategies\n• All closed trades (journal)\n• All open trades\n• Your best strategy image\n\nYour stats will return to zero. This cannot be undone."
+        }
+        confirmLabel="Continue"
+        cancelLabel="Cancel"
+        confirmVariant="destructive"
+        isLoading={isResetting}
+        onConfirm={() => setResetWizard("step2")}
+      />
+      <ConfirmDialog
+        open={resetWizard === "step2"}
+        onClose={() => !isResetting && setResetWizard("idle")}
+        title="Are you absolutely sure?"
+        description="You will need to type RESET in the next step to proceed. This permanently removes your stored trading data in Arden24."
+        confirmLabel="I understand — continue"
+        cancelLabel="Cancel"
+        confirmVariant="destructive"
+        isLoading={isResetting}
+        onConfirm={() => setResetWizard("step3")}
+      />
+      <TextConfirmDialog
+        open={resetWizard === "step3"}
+        onClose={() => !isResetting && setResetWizard("idle")}
+        title="Final confirmation"
+        description="Type RESET in capital letters exactly. Anything else cancels this reset."
+        inputLabel="Type RESET to confirm"
+        placeholder="RESET"
+        expectedValue="RESET"
+        mismatchMessage="That does not match. Enter RESET in capitals, or cancel."
+        confirmLabel="Erase all my data"
+        cancelLabel="Cancel"
+        onConfirmed={() => {
+          setResetWizard("idle");
+          void executeResetAllDataConfirmed();
+        }}
+      />
     </main>
   );
 }

@@ -6,6 +6,7 @@ import {
   confluenceMetadataShellBase,
 } from "@/components/confluence-card-layout";
 import { joinTimeframeTags, parseTimeframeTags } from "@/lib/confluence-timeframe-tags";
+import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
 
 /** Standard timeframe options for the picker; any number can be attached per confluence. */
 export const TF_PRESETS = [
@@ -20,6 +21,11 @@ export const TF_PRESETS = [
   "1W",
 ] as const;
 
+const TIMEFRAME_PRESET_SELECT_OPTIONS: AppSelectOption<string>[] = [
+  { value: "", label: "Timeframe…" },
+  ...TF_PRESETS.map((tf) => ({ value: tf, label: tf })),
+];
+
 type TimeframeTagsEditorProps = {
   value: string;
   onChange: (next: string) => void;
@@ -33,7 +39,7 @@ function TimeframeTagsEditorInner({
 }: TimeframeTagsEditorProps) {
   const tags = parseTimeframeTags(value);
   const [custom, setCustom] = useState("");
-  const [timeframeSelectKey, setTimeframeSelectKey] = useState(0);
+  const [presetPickerValue, setPresetPickerValue] = useState("");
 
   function setTags(next: string[]) {
     onChange(joinTimeframeTags(next));
@@ -51,8 +57,6 @@ function TimeframeTagsEditorInner({
     setTags(tags.filter((_, j) => j !== i));
   }
 
-  const innerSelectClass =
-    "w-full min-w-0 rounded-md border border-white/10 bg-zinc-950/90 px-2 py-2.5 text-xs font-medium text-white outline-none focus:border-sky-500/40 sm:w-[7.5rem] sm:shrink-0 sm:py-2";
   const innerInputClass =
     "min-h-[44px] min-w-0 flex-1 rounded-md border border-white/10 bg-zinc-950/90 px-2.5 py-2 text-xs font-medium text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40 sm:min-h-0";
 
@@ -89,26 +93,17 @@ function TimeframeTagsEditorInner({
       </div>
       {!disabled ? (
         <div className="mt-3 flex min-w-0 max-w-full flex-col gap-2 border-t border-white/[0.06] pt-3 sm:flex-row sm:flex-wrap sm:items-stretch">
-          <select
-            key={timeframeSelectKey}
-            defaultValue=""
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v) {
-                addTag(v);
-                setTimeframeSelectKey((k) => k + 1);
-              }
-            }}
-            className={innerSelectClass}
+          <AppSelect
             aria-label="Add standard timeframe"
-          >
-            <option value="">Timeframe…</option>
-            {TF_PRESETS.map((tf) => (
-              <option key={tf} value={tf}>
-                {tf}
-              </option>
-            ))}
-          </select>
+            value={presetPickerValue}
+            onChange={(v) => {
+              if (v) addTag(v);
+              setPresetPickerValue("");
+            }}
+            options={TIMEFRAME_PRESET_SELECT_OPTIONS}
+            size="compact"
+            className="w-full min-w-0 sm:w-[7.5rem] sm:shrink-0"
+          />
           <div className="flex min-w-0 max-w-full flex-[1_1_12rem] items-stretch gap-2">
             <input
               value={custom}

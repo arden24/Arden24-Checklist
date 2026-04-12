@@ -21,6 +21,7 @@ import {
   type StrategyFormFields,
 } from "@/lib/strategy-session-draft";
 import { logError } from "@/lib/log-error";
+import { useAppToast } from "@/contexts/AppToastContext";
 import { StrategyBuilderForm } from "@/components/strategy-builder-form";
 import {
   emptyStrategyFormFields,
@@ -48,6 +49,7 @@ const STRATEGY_NEW_INITIAL = emptyStrategyFormFields();
 export default function StrategyForm() {
   const router = useRouter();
   const { user } = useAuth();
+  const { pushToast } = useAppToast();
   const supabase = createClient();
   const strategiesKey = getStrategiesKey(user?.id);
 
@@ -172,7 +174,7 @@ export default function StrategyForm() {
     e.preventDefault();
     setSaveAttempted(true);
     if (!name.trim()) {
-      alert("Please add a strategy name.");
+      pushToast("Please add a strategy name.", "error");
       return;
     }
 
@@ -234,7 +236,7 @@ export default function StrategyForm() {
       router.push("/strategies");
     } catch (err) {
       logError(err);
-      alert("Failed to save strategy. Please try again.");
+      pushToast("Failed to save strategy. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }

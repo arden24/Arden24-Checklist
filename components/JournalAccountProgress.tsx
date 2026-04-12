@@ -21,6 +21,7 @@ import {
 } from "@/lib/account-progress-metrics";
 import type { Trade } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
+import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
 import {
   sessionFormFullKey,
   useSessionFormState,
@@ -57,6 +58,9 @@ const ACCOUNT_OPTIONS: {
     hint: "Practice account — consistency or learning goals.",
   },
 ];
+
+const ACCOUNT_TYPE_SELECT_OPTIONS: AppSelectOption<AccountProgressType>[] =
+  ACCOUNT_OPTIONS.map((o) => ({ value: o.value, label: o.label }));
 
 function formatMoney(n: number): string {
   const sign = n < 0 ? "-" : "";
@@ -688,21 +692,15 @@ function JournalAccountProgressInner({
 
           <div className="grid gap-5 lg:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">Account type</label>
-              <p className="mb-2 text-[11px] text-zinc-600">Describes this goal — your choice, saved with the profile.</p>
-              <select
+              <p className="mb-2 text-[11px] text-zinc-600">
+                Describes this goal — your choice, saved with the profile.
+              </p>
+              <AppSelect<AccountProgressType>
+                label="Account type"
                 value={accountType}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, accountType: e.target.value as AccountProgressType }))
-                }
-                className={inputClass}
-              >
-                {ACCOUNT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, accountType: v }))}
+                options={ACCOUNT_TYPE_SELECT_OPTIONS}
+              />
               <p className="mt-2 text-xs text-zinc-500">{activeHint}</p>
             </div>
 

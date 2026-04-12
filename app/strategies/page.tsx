@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getStrategiesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/log-error";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useAppToast } from "@/contexts/AppToastContext";
 import {
   fetchStrategies,
   deleteStrategy as deleteStrategyApi,
@@ -16,9 +18,12 @@ import {
 
 export default function StrategiesPage() {
   const { user } = useAuth();
+  const { pushToast } = useAppToast();
   const supabase = useMemo(() => createClient(), []);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const strategiesKey = getStrategiesKey(user?.id);
 
   const load = useCallback(() => {
@@ -60,36 +65,42 @@ export default function StrategiesPage() {
     load();
   }, [load]);
 
-  async function handleDelete(id: string) {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this strategy? This cannot be undone."
-      )
-    ) {
-      return;
-    }
+  function requestDelete(id: string) {
+    setDeleteTargetId(id);
+  }
 
-    if (supabase && user) {
-      try {
-        await deleteStrategyApi(supabase, id);
-        setStrategies((prev) => prev.filter((s) => s.id !== id));
-        return;
-      } catch (err) {
-        // If Supabase delete fails (e.g. auth / RLS issue), fall back to local storage
-        logError(err);
+  async function confirmDelete() {
+    if (!deleteTargetId) return;
+    const id = deleteTargetId;
+    setDeleteSubmitting(true);
+    try {
+      if (supabase && user) {
+        try {
+          await deleteStrategyApi(supabase, id);
+          setStrategies((prev) => prev.filter((s) => s.id !== id));
+          pushToast("Strategy deleted.", "success");
+          setDeleteTargetId(null);
+          return;
+        } catch (err) {
+          logError(err);
+          pushToast("Could not delete on the server. Removing locally if possible.", "error");
+        }
       }
-    }
 
-    // Local fallback (or primary path when no Supabase/user)
-    setStrategies((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      try {
-        window.localStorage.setItem(strategiesKey, JSON.stringify(next));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
+      setStrategies((prev) => {
+        const next = prev.filter((s) => s.id !== id);
+        try {
+          window.localStorage.setItem(strategiesKey, JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+      pushToast("Strategy removed.", "success");
+    } finally {
+      setDeleteSubmitting(false);
+      setDeleteTargetId(null);
+    }
   }
 
   return (
@@ -140,7 +151,7 @@ export default function StrategiesPage() {
                 onEdit={() => {
                   window.location.href = `/strategies/${strategy.id}/edit`;
                 }}
-                onDelete={() => handleDelete(strategy.id)}
+                onDelete={() => requestDelete(strategy.id)}
               />
             ))}
           </section>
@@ -152,6 +163,18 @@ export default function StrategiesPage() {
           sell financial instruments.
         </p>
       </PageContainer>
+
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        onClose={() => !deleteSubmitting && setDeleteTargetId(null)}
+        title="Delete this strategy?"
+        description="This permanently removes the strategy and its checklist. This cannot be undone."
+        confirmLabel="Delete strategy"
+        cancelLabel="Cancel"
+        confirmVariant="destructive"
+        isLoading={deleteSubmitting}
+        onConfirm={() => void confirmDelete()}
+      />
     </main>
   );
 }

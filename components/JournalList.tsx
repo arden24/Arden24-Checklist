@@ -9,6 +9,8 @@ import { cancelClosedTrade, loadTrades, type Trade } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
 import { dispatchTradesUpdated } from "@/lib/trades-updated";
 import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useAppToast } from "@/contexts/AppToastContext";
 
 function formatPnl(t: Trade): string {
   const pnl = canonicalRealisedPnl(t);
@@ -26,8 +28,11 @@ function formatResult(t: Trade): string {
 
 export default function JournalList() {
   const { user } = useAuth();
+  const { pushToast } = useAppToast();
   const supabase = createClient();
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   const load = useCallback(() => {
     if (supabase && user) {
@@ -41,24 +46,27 @@ export default function JournalList() {
     load();
   }, [load]);
 
-  const handleCancelTrade = useCallback(
-    async (tradeId: string) => {
-      const ok = window.confirm(
-        "Cancel this closed trade?\n\nIt will be removed from your journal, dashboard stats, and performance history."
-      );
-      if (!ok) return;
+  const requestCancelTrade = useCallback((tradeId: string) => {
+    setPendingCancelId(tradeId);
+  }, []);
 
-      try {
-        await cancelClosedTrade(tradeId, user?.id, supabase);
-        setTrades((prev) => prev.filter((t) => t.id !== tradeId));
-        dispatchTradesUpdated();
-      } catch (err) {
-        logError(err);
-        alert("Failed to cancel trade. Please try again.");
-      }
-    },
-    [supabase, user]
-  );
+  const confirmCancelTrade = useCallback(async () => {
+    if (!pendingCancelId) return;
+    const tradeId = pendingCancelId;
+    setCancelSubmitting(true);
+    try {
+      await cancelClosedTrade(tradeId, user?.id, supabase);
+      setTrades((prev) => prev.filter((t) => t.id !== tradeId));
+      dispatchTradesUpdated();
+      pushToast("Trade removed from your journal.", "success");
+    } catch (err) {
+      logError(err);
+      pushToast("Failed to cancel trade. Please try again.", "error");
+    } finally {
+      setCancelSubmitting(false);
+      setPendingCancelId(null);
+    }
+  }, [pendingCancelId, supabase, user?.id, pushToast]);
 
   const recent = trades.slice(0, 8);
 
@@ -118,7 +126,7 @@ export default function JournalList() {
                 )}
                 <button
                   type="button"
-                  onClick={() => handleCancelTrade(t.id)}
+                  onClick={() => requestCancelTrade(t.id)}
                   className="mt-2 inline-flex rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] font-medium text-red-200 hover:bg-red-500/20"
                 >
                   Cancel
@@ -128,6 +136,18 @@ export default function JournalList() {
           ))
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingCancelId !== null}
+        onClose={() => !cancelSubmitting && setPendingCancelId(null)}
+        title="Remove this closed trade?"
+        description="It will be removed from your journal, dashboard stats, and performance history. This cannot be undone."
+        confirmLabel="Remove trade"
+        cancelLabel="Keep trade"
+        confirmVariant="destructive"
+        isLoading={cancelSubmitting}
+        onConfirm={() => void confirmCancelTrade()}
+      />
     </div>
   );
 }

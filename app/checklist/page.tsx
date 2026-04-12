@@ -21,6 +21,7 @@ import {
   fetchUserDraft,
   upsertUserDraft,
 } from "@/lib/supabase/user-drafts";
+import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
 
 type ChecklistDraft = { activeId: string; checked: boolean[]; updatedAt?: string };
 
@@ -229,6 +230,11 @@ export default function ChecklistPage() {
   const activeStrategy = useMemo(
     () => strategies.find((s) => s.id === activeId) ?? null,
     [strategies, activeId]
+  );
+
+  const strategySwitchOptions = useMemo<AppSelectOption<string>[]>(
+    () => strategies.map((s) => ({ value: s.id, label: s.name })),
+    [strategies]
   );
 
   const checklistItems: ChecklistItem[] = useMemo(() => {
@@ -442,19 +448,14 @@ export default function ChecklistPage() {
                 </div>
 
                 {strategies.length > 1 && (
-                  <div className="space-y-1 text-right text-xs">
-                    <p className="text-zinc-500">Switch strategy</p>
-                    <select
+                  <div className="w-full min-w-0 text-right text-xs sm:w-auto">
+                    <AppSelect
+                      label="Switch strategy"
                       value={activeId ?? ""}
-                      onChange={(e) => setActiveId(e.target.value)}
-                      className="w-52 rounded-xl border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-white outline-none"
-                    >
-                      {strategies.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(id) => setActiveId(id)}
+                      options={strategySwitchOptions}
+                      className="ml-auto w-full min-w-0 sm:w-52"
+                    />
                   </div>
                 )}
               </div>
