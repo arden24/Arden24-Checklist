@@ -162,7 +162,7 @@ export function AppSelect<T extends string>({
           tabIndex={0}
           aria-activedescendant={`${id}-opt-${highlight}`}
           onKeyDown={onKeyList}
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 min-w-0 overflow-auto rounded-xl border border-white/10 bg-zinc-950 py-1 shadow-[0_16px_48px_rgba(0,0,0,0.75)]"
+          className="absolute left-0 right-0 top-full z-[130] mt-1 max-h-[min(15rem,70dvh)] min-w-0 overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-zinc-950 py-1 shadow-[0_16px_48px_rgba(0,0,0,0.75)]"
         >
           {options.map((opt, i) => {
             const isSelected = opt.value === value;

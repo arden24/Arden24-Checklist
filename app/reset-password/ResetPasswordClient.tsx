@@ -8,13 +8,12 @@ import SupabaseConfigHelp from "@/components/SupabaseConfigHelp";
 import PasswordInput from "@/components/PasswordInput";
 import { getAuthErrorDisplay, logAuthError } from "@/lib/auth-errors";
 import AppButton from "@/components/AppButton";
+import { devLog } from "@/lib/dev-log";
 
 const NOT_CONFIGURED_MESSAGE =
   "Add the environment variables shown above to .env.local and restart the dev server (npm run dev).";
 
 const MIN_PASSWORD_LENGTH = 6;
-
-const isDev = process.env.NODE_ENV === "development";
 
 type Phase = "loading" | "form" | "invalid" | "success" | "config";
 
@@ -37,17 +36,13 @@ export default function ResetPasswordClient() {
 
     (async () => {
       const code = searchParams.get("code");
-      if (isDev) {
-        console.log("[reset-password] page load", {
-          hasCode: Boolean(code),
-          codeLength: code?.length ?? 0,
-        });
-      }
+      devLog("[reset-password] page load", {
+        hasCode: Boolean(code),
+        codeLength: code?.length ?? 0,
+      });
 
       const { data: before } = await supabase.auth.getSession();
-      if (isDev) {
-        console.log("[reset-password] session (before exchange)", before.session);
-      }
+      devLog("[reset-password] session (before exchange)", before.session);
 
       if (cancelled) return;
 
@@ -62,12 +57,10 @@ export default function ResetPasswordClient() {
       if (code) {
         const { data: exchanged, error: exchangeErr } =
           await supabase.auth.exchangeCodeForSession(code);
-        if (isDev) {
-          console.log("[reset-password] exchangeCodeForSession", {
-            error: exchangeErr,
-            hasSession: Boolean(exchanged?.session),
-          });
-        }
+        devLog("[reset-password] exchangeCodeForSession", {
+          error: exchangeErr,
+          hasSession: Boolean(exchanged?.session),
+        });
         if (cancelled) return;
         if (exchangeErr) {
           logAuthError("exchangeCodeForSession", exchangeErr);
@@ -78,9 +71,7 @@ export default function ResetPasswordClient() {
       }
 
       const { data: after } = await supabase.auth.getSession();
-      if (isDev) {
-        console.log("[reset-password] session (after exchange)", after.session);
-      }
+      devLog("[reset-password] session (after exchange)", after.session);
 
       if (cancelled) return;
 
@@ -109,8 +100,6 @@ export default function ResetPasswordClient() {
       setError("This password reset link is invalid or has expired.");
       return;
     }
-
-    console.log("[reset-password] password before submit", password);
 
     if (password.length < MIN_PASSWORD_LENGTH) {
       setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);

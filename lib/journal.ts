@@ -1,6 +1,8 @@
 import { getTradesKey, getOpenTradesKey } from "./storage-keys";
 import { dispatchTradesUpdated } from "./trades-updated";
 import { normaliseRealisedPnLForClose, parseMoneyAmountInput } from "./realised-pnl";
+import { devLog } from "./dev-log";
+import { logError } from "./log-error";
 
 export const TRADES_STORAGE_KEY = "tradechecklist_trades";
 export const OPEN_TRADES_STORAGE_KEY = "tradechecklist_open_trades";
@@ -276,16 +278,16 @@ export async function closeTrade(
     const { deleteOpenTrade } = await import("@/lib/supabase/open-trades");
 
     try {
-      console.log("[closeTrade] Inserting closed trade into trades table", { openId: open.id, date: trade.date, pair: trade.pair, market: trade.market, pnl: trade.pnl });
+      devLog("[closeTrade] Inserting closed trade into trades table", { openId: open.id, date: trade.date, pair: trade.pair, market: trade.market, pnl: trade.pnl });
       // 1) Insert closed trade into trades table
       await insertTrade(supabase, userId, trade);
-      console.log("[closeTrade] Insert into trades succeeded");
+      devLog("[closeTrade] Insert into trades succeeded");
       // 2) Only after successful insert, delete from open_trades
       await deleteOpenTrade(supabase, open.id);
-      console.log("[closeTrade] Delete from open_trades succeeded");
+      devLog("[closeTrade] Delete from open_trades succeeded");
       dispatchTradesUpdated();
     } catch (err) {
-      console.error("[closeTrade] Supabase error", err);
+      logError(err);
       // Surface Supabase errors to the caller (UI will show a clear message)
       throw err;
     }

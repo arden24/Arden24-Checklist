@@ -144,7 +144,7 @@ export default function Navbar() {
                   <Link
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
-                    className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
+                    className={`flex min-h-9 items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black md:py-1.5 ${
                       isActive
                         ? "bg-sky-500/15 text-sky-300"
                         : "text-zinc-300 hover:bg-white/5 hover:text-white"

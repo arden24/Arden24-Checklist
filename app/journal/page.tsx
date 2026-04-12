@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchTrades } from "@/lib/supabase/trades";
@@ -12,11 +13,22 @@ import {
   type Trade,
 } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
-import JournalCalendar from "@/components/JournalCalendar";
 import JournalDayDetail from "@/components/JournalDayDetail";
-import JournalAccountProgress from "@/components/JournalAccountProgress";
 import SummaryCard from "@/components/SummaryCard";
-import PerformanceInsights from "@/components/PerformanceInsights";
+import { PanelSkeleton } from "@/components/PanelSkeleton";
+
+const JournalCalendar = dynamic(() => import("@/components/JournalCalendar"), {
+  loading: () => <PanelSkeleton lines={6} minHeight="min-h-[280px]" />,
+});
+
+const JournalAccountProgress = dynamic(
+  () => import("@/components/JournalAccountProgress"),
+  { loading: () => <PanelSkeleton lines={10} minHeight="min-h-[12rem]" /> },
+);
+
+const PerformanceInsights = dynamic(() => import("@/components/PerformanceInsights"), {
+  loading: () => <PanelSkeleton lines={4} />,
+});
 import {
   ARDEN24_TRADES_UPDATED_EVENT,
   dispatchTradesUpdated,
@@ -276,7 +288,7 @@ export default function JournalPage() {
                   Select a day
                 </p>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Click a day in the calendar to see trades and notes.
+                  Tap or click a day in the calendar to see trades and notes.
                 </p>
               </div>
             )}

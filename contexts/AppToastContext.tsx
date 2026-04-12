@@ -51,7 +51,7 @@ export function AppToastProvider({ children }: { children: ReactNode }) {
     <AppToastContext.Provider value={value}>
       {children}
       <div
-        className="pointer-events-none fixed bottom-0 left-0 right-0 z-[200] flex max-h-[40vh] flex-col-reverse gap-2 overflow-hidden p-4 sm:left-auto sm:right-4 sm:top-[calc(var(--app-header-offset)+0.75rem)] sm:bottom-auto sm:w-full sm:max-w-sm sm:flex-col"
+        className="pointer-events-none fixed bottom-0 left-0 right-0 z-[200] flex max-h-[40vh] flex-col-reverse gap-2 overflow-hidden px-4 pb-[max(1rem,env(safe-area-inset-bottom,0px)+0.25rem)] pt-2 sm:left-auto sm:right-4 sm:top-[calc(var(--app-header-offset)+0.75rem)] sm:bottom-auto sm:w-full sm:max-w-sm sm:flex-col sm:px-0 sm:pb-0 sm:pt-0"
         aria-live="polite"
         aria-relevant="additions"
       >

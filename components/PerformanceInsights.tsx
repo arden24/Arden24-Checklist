@@ -1,17 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { createClient } from "@/lib/supabase/client";
-import { fetchTrades } from "@/lib/supabase/trades";
-import { loadTrades } from "@/lib/journal";
-import { logError } from "@/lib/log-error";
+import { useMemo } from "react";
 import { computeInsights, type Insight } from "@/lib/performance-insights";
 import type { Trade } from "@/lib/supabase/trades";
 
 type PerformanceInsightsProps = {
-  /** Optional: pass trades to avoid fetching (e.g. from dashboard/stats). */
-  trades?: Trade[] | null;
+  /** Closed trades from the parent page — no internal fetching. */
+  trades: Trade[];
 };
 
 function InsightCard({ insight }: { insight: Insight }) {
@@ -39,38 +34,8 @@ function InsightCard({ insight }: { insight: Insight }) {
   );
 }
 
-export default function PerformanceInsights({ trades: tradesProp }: PerformanceInsightsProps) {
-  const { user } = useAuth();
-  const supabase = createClient();
-  const [trades, setTrades] = useState<Trade[] | null>(
-    tradesProp !== undefined ? (tradesProp ?? null) : null
-  );
-
-  const loadTradesData = useCallback(() => {
-    if (tradesProp !== undefined) {
-      setTrades(tradesProp ?? null);
-      return;
-    }
-    if (!user) {
-      setTrades(null);
-      return;
-    }
-    if (supabase) {
-      fetchTrades(supabase).then(setTrades).catch(logError);
-    } else {
-      setTrades(loadTrades(user?.id) as Trade[]);
-    }
-  }, [user, supabase, tradesProp]);
-
-  useEffect(() => {
-    loadTradesData();
-  }, [loadTradesData]);
-
-  useEffect(() => {
-    if (tradesProp !== undefined) setTrades(tradesProp ?? null);
-  }, [tradesProp]);
-
-  const insights = trades !== null ? computeInsights(trades) : [];
+export default function PerformanceInsights({ trades }: PerformanceInsightsProps) {
+  const insights = useMemo(() => computeInsights(trades), [trades]);
 
   return (
     <section className="space-y-4" aria-labelledby="performance-insights-heading">
@@ -83,14 +48,13 @@ export default function PerformanceInsights({ trades: tradesProp }: PerformanceI
         </span>
       </div>
       <div className="space-y-2">
-        {trades === null && tradesProp === undefined ? (
+        {insights.length === 0 ? (
           <div className="rounded-xl border border-white/10 bg-slate-950/40 px-4 py-6 text-center text-sm text-zinc-500">
-            Loading insights…
+            Not enough closed trades yet for highlights. Keep journaling — insights appear as your
+            sample grows.
           </div>
         ) : (
-          insights.map((insight) => (
-            <InsightCard key={insight.id} insight={insight} />
-          ))
+          insights.map((insight) => <InsightCard key={insight.id} insight={insight} />)
         )}
       </div>
       <p className="text-[10px] text-zinc-500">

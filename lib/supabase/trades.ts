@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { devLog } from "@/lib/dev-log";
+import { logError } from "@/lib/log-error";
 
 export type Trade = {
   id: string;
@@ -113,13 +115,13 @@ export async function insertTrade(
     closing_screenshot: trade.closingScreenshot ?? trade.screenshot ?? null,
     rating: trade.rating != null ? Math.round(trade.rating) : null,
   };
-  console.log("[insertTrade] Inserting row into trades", row);
+  devLog("[insertTrade] Inserting row into trades", row);
   const { data, error } = await supabase.from("trades").insert(row).select().single();
   if (error) {
-    console.error("[insertTrade] Supabase insert error", error.code, error.message, error.details);
+    logError(error);
     throw error;
   }
-  console.log("[insertTrade] Insert succeeded, id:", (data as TradeRow)?.id);
+  devLog("[insertTrade] Insert succeeded, id:", (data as TradeRow)?.id);
   return rowToTrade(data as TradeRow);
 }
 

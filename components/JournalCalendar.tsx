@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import type { Trade } from "@/lib/journal";
 import { canonicalRealisedPnl } from "@/lib/realised-pnl";
 import JournalDayCell from "./JournalDayCell";
@@ -46,7 +46,7 @@ function dateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export default function JournalCalendar({
+function JournalCalendarInner({
   year,
   month,
   trades,
@@ -122,3 +122,5 @@ export default function JournalCalendar({
     </div>
   );
 }
+
+export default memo(JournalCalendarInner);

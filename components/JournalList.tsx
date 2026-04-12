@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +11,18 @@ import { dispatchTradesUpdated } from "@/lib/trades-updated";
 import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAppToast } from "@/contexts/AppToastContext";
+
+export type JournalListProps = {
+  /**
+   * When provided, the list is controlled by the parent (no `fetchTrades` / localStorage load).
+   * Parent should refresh this array after `ARDEN24_TRADES_UPDATED_EVENT` or equivalent.
+   */
+  trades?: Trade[];
+  /**
+   * When parent-controlled, set false until the first load completes so we do not flash an empty list.
+   */
+  dataReady?: boolean;
+};
 
 function formatPnl(t: Trade): string {
   const pnl = canonicalRealisedPnl(t);
@@ -26,25 +38,29 @@ function formatResult(t: Trade): string {
   return "Breakeven";
 }
 
-export default function JournalList() {
+export default function JournalList({ trades: tradesProp, dataReady = true }: JournalListProps) {
+  const controlled = tradesProp !== undefined;
   const { user } = useAuth();
   const { pushToast } = useAppToast();
-  const supabase = createClient();
-  const [trades, setTrades] = useState<Trade[]>([]);
+  const supabase = useMemo(() => createClient(), []);
+  const [internalTrades, setInternalTrades] = useState<Trade[]>([]);
   const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   const load = useCallback(() => {
+    if (controlled) return;
     if (supabase && user) {
-      fetchTrades(supabase).then(setTrades).catch(logError);
+      fetchTrades(supabase).then(setInternalTrades).catch(logError);
     } else {
-      setTrades(loadTrades(user?.id));
+      setInternalTrades(loadTrades(user?.id));
     }
-  }, [supabase, user]);
+  }, [controlled, supabase, user]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const trades = controlled ? tradesProp! : internalTrades;
 
   const requestCancelTrade = useCallback((tradeId: string) => {
     setPendingCancelId(tradeId);
@@ -56,7 +72,9 @@ export default function JournalList() {
     setCancelSubmitting(true);
     try {
       await cancelClosedTrade(tradeId, user?.id, supabase);
-      setTrades((prev) => prev.filter((t) => t.id !== tradeId));
+      if (!controlled) {
+        setInternalTrades((prev) => prev.filter((t) => t.id !== tradeId));
+      }
       dispatchTradesUpdated();
       pushToast("Trade removed from your journal.", "success");
     } catch (err) {
@@ -66,9 +84,11 @@ export default function JournalList() {
       setCancelSubmitting(false);
       setPendingCancelId(null);
     }
-  }, [pendingCancelId, supabase, user?.id, pushToast]);
+  }, [pendingCancelId, supabase, user?.id, pushToast, controlled]);
 
-  const recent = trades.slice(0, 8);
+  const recent = useMemo(() => trades.slice(0, 8), [trades]);
+
+  const showLoading = controlled && !dataReady;
 
   return (
     <div className="w-full min-w-0 max-w-full rounded-2xl border border-slate-800/90 bg-slate-950/70 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.9)]">
@@ -81,7 +101,7 @@ export default function JournalList() {
             From Live Trades → Journal outcome. These feed the Journal tab too.
           </p>
         </div>
-        {trades.length > 0 && (
+        {!showLoading && trades.length > 0 && (
           <Link
             href="/journal"
             className="rounded-full border border-sky-500/50 bg-sky-500/10 px-3 py-1 text-[11px] font-medium text-sky-100 hover:bg-sky-500/20"
@@ -92,7 +112,11 @@ export default function JournalList() {
       </div>
 
       <div className="mt-4 space-y-3 text-sm">
-        {recent.length === 0 ? (
+        {showLoading ? (
+          <div className="rounded-xl border border-white/10 bg-black/40 px-3 py-6 text-center text-xs text-zinc-500">
+            Loading recent trades…
+          </div>
+        ) : recent.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-700/80 bg-black/40 px-3 py-6 text-center text-xs text-zinc-500">
             No closed trades yet. Open a trade from here or the Checklist, then
             close it from the <Link href="/open-trades" className="text-sky-400 hover:underline">Live Trades</Link> tab.

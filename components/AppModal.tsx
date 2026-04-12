@@ -50,7 +50,7 @@ export function AppModal({
 
   return (
     <div
-      className="fixed inset-0 z-[150] flex items-end justify-center p-3 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[150] flex items-end justify-center px-3 pt-3 sm:items-center sm:px-4 sm:pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom,0px)+0.5rem)]"
       role="presentation"
     >
       <button

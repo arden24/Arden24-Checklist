@@ -46,7 +46,7 @@ export default function ImageUploader({ storageKey }: ImageUploaderProps) {
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="rounded-xl border border-sky-500/60 bg-sky-500/10 px-4 py-2 text-xs font-semibold text-sky-300 hover:bg-sky-500/20"
+        className="min-h-11 touch-manipulation rounded-xl border border-sky-500/60 bg-sky-500/10 px-4 py-2.5 text-xs font-semibold text-sky-300 hover:bg-sky-500/20 sm:min-h-0 sm:py-2"
       >
         Add Image
       </button>
@@ -64,6 +64,8 @@ export default function ImageUploader({ storageKey }: ImageUploaderProps) {
             src={preview}
             alt="Strategy chart preview"
             className="h-40 w-full max-w-full object-cover"
+            decoding="async"
+            loading="lazy"
           />
         </div>
       )}

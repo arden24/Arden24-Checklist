@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { devLog } from "@/lib/dev-log";
 
 export const ACCOUNT_PROGRESS_TABLE = "account_progress" as const;
 
@@ -185,6 +186,6 @@ export async function saveAccountProgress(
     throw error;
   }
 
-  console.log("[account_progress] inserted", { userId });
+  devLog("[account_progress] inserted", { userId });
   return rowToModel(data as Row);
 }

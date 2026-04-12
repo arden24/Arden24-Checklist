@@ -21,6 +21,10 @@ const PERFORMANCE_TIMEFRAME_OPTIONS: AppSelectOption<Timeframe>[] = [
   { value: "years", label: "Years (5)" },
 ];
 
+/** Stable defaults so optional props do not change reference every render. */
+const EMPTY_CLOSED: Trade[] = [];
+const EMPTY_OPEN: OpenTrade[] = [];
+
 type PeriodBucket = {
   label: string;
   wins: number;
@@ -153,9 +157,26 @@ function aggregateByTimeframe(
   return order.map((key) => ({ ...buckets[key], label: buckets[key].label }));
 }
 
-export default function PerformanceChart() {
+export type PerformanceChartProps = {
+  /**
+   * When true, chart reads `closedTrades` / `openTrades` from the parent (e.g. dashboard) and does
+   * not fetch or subscribe — parent refreshes on `ARDEN24_TRADES_UPDATED_EVENT`.
+   */
+  useParentTrades?: boolean;
+  closedTrades?: Trade[];
+  openTrades?: OpenTrade[];
+  /** When `useParentTrades`, false until parent has completed its first trades load. */
+  dataReady?: boolean;
+};
+
+export default function PerformanceChart({
+  useParentTrades = false,
+  closedTrades: parentClosed = EMPTY_CLOSED,
+  openTrades: parentOpen = EMPTY_OPEN,
+  dataReady = true,
+}: PerformanceChartProps) {
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [mounted, setMounted] = useState(false);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [openTrades, setOpenTrades] = useState<OpenTrade[]>([]);
@@ -173,10 +194,19 @@ export default function PerformanceChart() {
   }, [supabase, user]);
 
   useEffect(() => {
+    if (useParentTrades) return;
     load();
-  }, [load]);
+  }, [useParentTrades, load]);
 
   useEffect(() => {
+    if (!useParentTrades) return;
+    setClosedTrades(parentClosed);
+    setOpenTrades(parentOpen);
+    setMounted(dataReady);
+  }, [useParentTrades, parentClosed, parentOpen, dataReady]);
+
+  useEffect(() => {
+    if (useParentTrades) return;
     const onUpdated = () => {
       load();
     };
@@ -184,7 +214,7 @@ export default function PerformanceChart() {
     return () => {
       window.removeEventListener(ARDEN24_TRADES_UPDATED_EVENT, onUpdated);
     };
-  }, [load]);
+  }, [useParentTrades, load]);
 
   const chartData = useMemo(
     () => (mounted ? aggregateByTimeframe(closedTrades, openTrades, timeframe) : []),

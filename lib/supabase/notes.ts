@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { devLog } from "@/lib/dev-log";
 
 /**
  * Supabase table for per-user, per-category notes.
@@ -151,7 +152,7 @@ export async function upsertUserNote(
   if (error) {
     // Rare race: two tabs inserted same user/category — fetch and update
     if (error.code === "23505") {
-      console.warn("[notes] unique violation on insert, retrying as update", {
+      devLog("[notes] unique violation on insert, retrying as update", {
         table,
         userId,
         category,
@@ -191,7 +192,7 @@ export async function upsertUserNote(
     throw error;
   }
 
-  console.log("[notes] inserted row", {
+  devLog("[notes] inserted row", {
     table,
     id: (data as UserNoteRow)?.id,
     category,

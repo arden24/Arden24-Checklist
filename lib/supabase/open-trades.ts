@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { devLog } from "@/lib/dev-log";
+import { logError } from "@/lib/log-error";
 
 export type OpenTrade = {
   id: string;
@@ -93,10 +95,10 @@ export async function deleteOpenTrade(
   supabase: SupabaseClient,
   id: string
 ): Promise<void> {
-  console.log("[deleteOpenTrade] Deleting open_trades row id:", id);
+  devLog("[deleteOpenTrade] Deleting open_trades row id:", id);
   const { error } = await supabase.from("open_trades").delete().eq("id", id);
   if (error) {
-    console.error("[deleteOpenTrade] Supabase delete error", error.code, error.message, error.details);
+    logError(error);
     throw error;
   }
 }

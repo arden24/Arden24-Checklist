@@ -79,7 +79,7 @@ const CURRENCY_OPTIONS: AppSelectOption<CloseFormState["currency"]>[] = [
 export default function OpenTradesPage() {
   const { user } = useAuth();
   const { pushToast } = useAppToast();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [openTrades, setOpenTrades] = useState<OpenTrade[]>([]);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [removeSubmitting, setRemoveSubmitting] = useState(false);

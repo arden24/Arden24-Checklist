@@ -74,7 +74,7 @@ function writeChecklistDraftToSession(activeId: string, checked: boolean[]) {
 
 export default function ChecklistPage() {
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const strategiesKey = getStrategiesKey(user?.id);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);

@@ -1,25 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import LotSizeCalculator from "@/components/lot-size-calculator";
 import TradeForm from "@/components/trade-form";
 import StrategyCard from "@/components/strategy-card";
 import SummaryCard from "@/components/SummaryCard";
-import JournalList from "@/components/JournalList";
-import PerformanceChart from "@/components/PerformanceChart";
 import StrategyChecklist from "@/components/StrategyChecklist";
 import ImageUploader from "@/components/ImageUploader";
-import PerformanceInsights from "@/components/PerformanceInsights";
+import { PanelSkeleton } from "@/components/PanelSkeleton";
+
+const LotSizeCalculator = dynamic(() => import("@/components/lot-size-calculator"), {
+  loading: () => <PanelSkeleton lines={5} />,
+});
+
+const JournalList = dynamic(() => import("@/components/JournalList"), {
+  loading: () => <PanelSkeleton lines={8} />,
+});
+
+const PerformanceChart = dynamic(() => import("@/components/PerformanceChart"), {
+  loading: () => <PanelSkeleton lines={3} minHeight="min-h-[16rem]" />,
+});
 import { useAuth } from "@/contexts/AuthContext";
-import { loadTrades } from "@/lib/journal";
+import { loadTrades, loadOpenTrades, type OpenTrade } from "@/lib/journal";
 import { getStrategiesKey, getBestStrategyImageKey, getTradesKey, getOpenTradesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
 import { fetchStrategies, type Strategy, type ChecklistItem } from "@/lib/supabase/strategies";
 import { fetchTrades } from "@/lib/supabase/trades";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
 import type { Trade } from "@/lib/supabase/trades";
-import { loadOpenTrades } from "@/lib/journal";
 import { logError } from "@/lib/log-error";
 import { ARDEN24_TRADES_UPDATED_EVENT } from "@/lib/trades-updated";
 import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
@@ -99,27 +108,62 @@ export default function DashboardPage() {
   const supabase = useMemo(() => createClient(), []);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
+  const [openTradesList, setOpenTradesList] = useState<OpenTrade[]>([]);
   const [openTradesCount, setOpenTradesCount] = useState(0);
+  const [tradesReady, setTradesReady] = useState(false);
+  const tradesLoadSeq = useRef(0);
   const [isResetting, setIsResetting] = useState(false);
   const [resetWizard, setResetWizard] = useState<ResetWizardStep>("idle");
 
-  const loadTradesData = useCallback(() => {
+  const loadTradesData = useCallback(async () => {
+    const seq = ++tradesLoadSeq.current;
+    const applyIfCurrent = () => seq === tradesLoadSeq.current;
+
     if (supabase && user) {
-      fetchTrades(supabase).then(setClosedTrades).catch(logError);
-      fetchOpenTrades(supabase).then((list) => setOpenTradesCount(list.length)).catch(logError);
+      try {
+        const [closed, open] = await Promise.all([
+          fetchTrades(supabase),
+          fetchOpenTrades(supabase),
+        ]);
+        if (!applyIfCurrent()) return;
+        setClosedTrades(closed);
+        setOpenTradesList(open);
+        setOpenTradesCount(open.length);
+      } catch (e) {
+        logError(e);
+        if (!applyIfCurrent()) return;
+        setClosedTrades([]);
+        setOpenTradesList([]);
+        setOpenTradesCount(0);
+      } finally {
+        if (applyIfCurrent()) setTradesReady(true);
+      }
     } else {
+      const open = loadOpenTrades(user?.id);
+      if (!applyIfCurrent()) return;
       setClosedTrades(loadTrades(user?.id) as Trade[]);
-      setOpenTradesCount(loadOpenTrades(user?.id).length);
+      setOpenTradesList(open);
+      setOpenTradesCount(open.length);
+      setTradesReady(true);
     }
   }, [supabase, user]);
 
   useEffect(() => {
-    loadTradesData();
+    void loadTradesData();
   }, [loadTradesData]);
+
+  const prevUserIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevUserIdRef.current;
+    prevUserIdRef.current = user?.id;
+    if (prev !== undefined && prev !== user?.id) {
+      setTradesReady(false);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     const onUpdated = () => {
-      loadTradesData();
+      void loadTradesData();
     };
     window.addEventListener(ARDEN24_TRADES_UPDATED_EVENT, onUpdated);
     return () => {
@@ -167,7 +211,7 @@ export default function DashboardPage() {
         ];
         keys.forEach((key) => window.localStorage.removeItem(key));
       }
-      loadTradesData();
+      void loadTradesData();
       loadStrategies();
       pushToast("All data has been reset. Reloading the page…", "success");
       window.location.reload();
@@ -247,7 +291,7 @@ export default function DashboardPage() {
         </section>
 
         <section id="dashboard-trades" className="space-y-4">
-          <JournalList />
+          <JournalList trades={closedTrades} dataReady={tradesReady} />
         </section>
 
         <section id="dashboard-calculator" className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)]">
@@ -288,7 +332,12 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="mt-4 min-h-[280px]">
-              <PerformanceChart />
+              <PerformanceChart
+                useParentTrades
+                closedTrades={closedTrades}
+                openTrades={openTradesList}
+                dataReady={tradesReady}
+              />
             </div>
           </div>
         </section>

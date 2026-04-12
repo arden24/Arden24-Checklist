@@ -114,7 +114,10 @@ export default function PublicMobileMenu() {
               className={`fixed inset-0 z-[90] bg-slate-950/75 backdrop-blur-[3px] transition-opacity motion-reduce:transition-none ${drawerMotionClass} ${
                 animateIn ? "opacity-100" : "pointer-events-none opacity-0"
               }`}
-              onClick={() => setOpen(false)}
+              onPointerDown={(e) => {
+                if (e.button !== 0 && e.pointerType === "mouse") return;
+                setOpen(false);
+              }}
             />
 
             <aside

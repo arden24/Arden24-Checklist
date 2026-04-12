@@ -808,7 +808,7 @@ type JournalAccountProgressProps = {
 
 export default function JournalAccountProgress({ closedTrades }: JournalAccountProgressProps) {
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const userId = user?.id;
 
   const [serverRow, setServerRow] = useState<AccountProgress | null>(null);

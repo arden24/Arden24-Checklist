@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 type JournalDayCellProps = {
   day: number | null;
   pnl: number | null;
@@ -15,7 +17,7 @@ function formatPnlShort(pnl: number): string {
   return "0";
 }
 
-export default function JournalDayCell({
+function JournalDayCellInner({
   day,
   pnl,
   isSelected,
@@ -76,3 +78,5 @@ export default function JournalDayCell({
     </button>
   );
 }
+
+export default memo(JournalDayCellInner);
