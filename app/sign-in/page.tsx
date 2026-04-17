@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import SupabaseConfigHelp from "@/components/SupabaseConfigHelp";
@@ -15,8 +15,19 @@ import { isPasswordRecoverySession } from "@/lib/auth-recovery";
 const NOT_CONFIGURED_MESSAGE =
   "Add the environment variables shown above to .env.local and restart the dev server (npm run dev).";
 
-export default function SignInPage() {
+/** Same-origin path only; blocks open redirects. */
+function safeInternalNext(raw: string | null): string | null {
+  if (!raw) return null;
+  const t = raw.trim();
+  if (!t.startsWith("/") || t.startsWith("//")) return null;
+  if (t.includes("://")) return null;
+  if (t.includes("@")) return null;
+  return t;
+}
+
+function SignInPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, session } = useAuth();
   const supabase = createClient();
   const [email, setEmail] = useState("");
@@ -45,8 +56,9 @@ export default function SignInPage() {
       router.replace("/reset-password");
       return;
     }
-    router.replace("/dashboard");
-  }, [user, session, router]);
+    const next = safeInternalNext(searchParams.get("next"));
+    router.replace(next ?? "/dashboard");
+  }, [user, session, router, searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -196,5 +208,19 @@ export default function SignInPage() {
         For journaling and discipline only. Not financial advice.
       </p>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-black text-sm text-zinc-400">
+          Loading…
+        </div>
+      }
+    >
+      <SignInPageInner />
+    </Suspense>
   );
 }

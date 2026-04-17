@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
@@ -9,17 +9,29 @@ import SupabaseConfigHelp from "@/components/SupabaseConfigHelp";
 import { getAuthErrorDisplay, logAuthError } from "@/lib/auth-errors";
 import { isValidEmail } from "@/lib/auth-validation";
 import { getAuthCallbackRedirectUrl } from "@/lib/auth-redirect-url";
+import { getActivePlanFromSubscriptionRow } from "@/lib/subscriptions/access";
+import { PLAN_DETAILS, PLAN_ORDER } from "@/lib/subscriptions/plan-details";
 import PageContainer from "@/components/PageContainer";
 import AppButton from "@/components/AppButton";
+import WorkspaceThemeSelector from "@/components/workspace/WorkspaceThemeSelector";
+import SubscriptionBillingSummary from "@/components/billing/SubscriptionBillingSummary";
 
 const MIN_PASSWORD_LENGTH = 6;
+
+type SubscriptionSummary = {
+  price_id?: string | null;
+  subscription_plan: string | null;
+  subscription_status: string;
+  current_period_end: string | null;
+  scheduled_plan?: string | null;
+};
 
 const NOT_CONFIGURED_MESSAGE =
   "Add the environment variables shown above to .env.local and restart the dev server (npm run dev).";
 
 export default function AccountPage() {
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [emailPanelOpen, setEmailPanelOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -33,6 +45,36 @@ export default function AccountPage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+
+  const [subscription, setSubscription] = useState<SubscriptionSummary | null | undefined>(
+    undefined
+  );
+
+  useEffect(() => {
+    if (!supabase || !user) {
+      setSubscription(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select(
+          "subscription_plan, subscription_status, current_period_end, price_id, scheduled_plan"
+        )
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        setSubscription(null);
+        return;
+      }
+      setSubscription(data as SubscriptionSummary | null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, user]);
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -117,7 +159,7 @@ export default function AccountPage() {
 
   return (
     <main className="min-h-screen min-w-0 bg-slate-950 py-6 text-white sm:py-8">
-      <PageContainer maxWidthClass="max-w-2xl" className="space-y-6">
+      <PageContainer maxWidthClass="max-w-4xl" className="space-y-6">
         <header>
           <h1 className="text-2xl font-bold sm:text-3xl">Account</h1>
           <p className="mt-2 text-sm text-zinc-400">
@@ -144,6 +186,109 @@ export default function AccountPage() {
             </div>
           </dl>
         </section>
+
+        <section
+          id="subscription"
+          className="scroll-mt-24 rounded-2xl border border-white/10 bg-slate-900/60 p-6"
+        >
+          <h2 className="text-lg font-semibold text-white">Subscription</h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            View your plan status here. Use Billing to manage your plan or open checkout.
+          </p>
+
+          <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4">
+            <h3 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+              Current plan
+            </h3>
+            {subscription === undefined ? (
+              <SubscriptionBillingSummary row={null} loading />
+            ) : (
+              (() => {
+                const activePlan = getActivePlanFromSubscriptionRow(subscription);
+                const tierKeyForCopy = activePlan ?? "basic";
+                const currentDetail = PLAN_DETAILS[tierKeyForCopy];
+                return (
+                  <>
+                    <SubscriptionBillingSummary row={subscription} />
+
+                    <div className="mt-6 rounded-xl border border-sky-500/25 bg-sky-950/20 p-4">
+                      <h4 className="text-xs font-medium uppercase tracking-wider text-sky-400/90">
+                        What your plan includes
+                      </h4>
+                      <p className="mt-2 text-sm text-zinc-300">{currentDetail.tagline}</p>
+                      <ul className="mt-3 space-y-2 text-sm text-zinc-400">
+                        {currentDetail.features.map((line) => (
+                          <li key={line} className="flex gap-2">
+                            <span className="text-sky-400/90" aria-hidden>
+                              ✓
+                            </span>
+                            <span>{line}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="mt-8">
+                      <h4 className="text-sm font-semibold text-white">Compare tiers</h4>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Observational analytics only — not financial advice. Full checkout on{" "}
+                        <Link href="/pricing" className="text-sky-300 hover:text-sky-200">
+                          Pricing
+                        </Link>
+                        .
+                      </p>
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        {PLAN_ORDER.map((planKey) => {
+                          const d = PLAN_DETAILS[planKey];
+                          const isCurrent =
+                            activePlan === planKey ||
+                            (activePlan === null && planKey === "basic");
+                          return (
+                            <div
+                              key={planKey}
+                              className={`rounded-xl border bg-black/25 p-4 ${
+                                isCurrent
+                                  ? "border-sky-400/70 ring-2 ring-sky-400/40"
+                                  : "border-white/10"
+                              }`}
+                            >
+                              {isCurrent ? (
+                                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-sky-300">
+                                  Current
+                                </p>
+                              ) : null}
+                              <p className="text-sm font-semibold text-white">{d.label}</p>
+                              <p className="mt-1 text-xs text-zinc-500">{d.tagline}</p>
+                              <ul className="mt-3 max-h-48 space-y-1.5 overflow-y-auto text-[11px] leading-snug text-zinc-400">
+                                {d.features.slice(0, 6).map((line) => (
+                                  <li key={line}>· {line}</li>
+                                ))}
+                                {d.features.length > 6 ? (
+                                  <li className="text-zinc-600">+ more on Pricing…</li>
+                                ) : null}
+                              </ul>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()
+            )}
+          </div>
+
+          <div className="mt-5">
+            <Link
+              href="/billing"
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-sky-400/50 bg-sky-500/10 px-4 py-2.5 text-sm font-medium text-sky-200 touch-manipulation hover:border-sky-400/70 hover:bg-sky-500/15 sm:w-auto sm:justify-start"
+            >
+              Manage plan
+            </Link>
+          </div>
+        </section>
+
+        <WorkspaceThemeSelector />
 
         <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
           <h2 className="text-lg font-semibold text-white">Login &amp; security</h2>
@@ -281,9 +426,10 @@ export default function AccountPage() {
           </Link>
         </div>
 
-        <p className="text-xs text-gray-400">
-          Arden24 is a product of Arden Ventures Ltd. For journaling, discipline and self-review
-          only. Not financial advice.
+        <p className="text-xs leading-relaxed text-gray-400">
+          Arden24 is a product of Arden Ventures Ltd. Arden24 is a trading journal and self-analysis
+          tool. It does not provide financial advice, trade recommendations, or signals. All trading
+          decisions are made solely by the user.
         </p>
       </PageContainer>
     </main>

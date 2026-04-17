@@ -13,6 +13,9 @@ import {
 import { logError } from "@/lib/log-error";
 import { useAppToast } from "@/contexts/AppToastContext";
 import { sessionFormFullKey } from "@/lib/hooks/useSessionFormState";
+import FeatureLockCard from "@/components/subscriptions/FeatureLockCard";
+import { useActivePlan } from "@/lib/subscriptions/use-active-plan";
+import { canUseProNotes } from "@/lib/subscriptions/tier-gates";
 
 const NOTES_DRAFT_KEY = sessionFormFullKey("page:notes");
 
@@ -80,6 +83,7 @@ export default function NotesPage() {
   const { user } = useAuth();
   const { pushToast } = useAppToast();
   const supabase = useMemo(() => createClient(), []);
+  const { plan: subscriptionPlan, loading: planLoading } = useActivePlan();
 
   const [activeCategory, setActiveCategory] = useState<NoteCategory>(
     NOTE_CATEGORIES[0] ?? "general_notes"
@@ -98,6 +102,10 @@ export default function NotesPage() {
     let cancelled = false;
     async function load() {
       if (!supabase || !safeUserId) {
+        setLoading(false);
+        return;
+      }
+      if (planLoading || !canUseProNotes(subscriptionPlan)) {
         setLoading(false);
         return;
       }
@@ -147,7 +155,7 @@ export default function NotesPage() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, safeUserId]);
+  }, [supabase, safeUserId, planLoading, subscriptionPlan]);
 
   useEffect(() => {
     if (loading || typeof window === "undefined" || !safeUserId) return;
@@ -212,7 +220,18 @@ export default function NotesPage() {
           </p>
         </header>
 
-        <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
+        {planLoading ? (
+          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 text-sm text-zinc-400">
+            Loading…
+          </div>
+        ) : !canUseProNotes(subscriptionPlan) ? (
+          <FeatureLockCard
+            requiredPlan="pro"
+            title="Structured notes"
+            description="Keep weekly plans, watchlists, and lessons in one private workspace — unlocked on Pro and Elite."
+          />
+        ) : (
+          <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-400/90">
@@ -299,9 +318,11 @@ export default function NotesPage() {
             </div>
           </div>
         </section>
+        )}
 
-        <p className="text-[11px] text-zinc-500">
-          Notes are stored per account (private to you). Not financial advice.
+        <p className="text-[11px] leading-relaxed text-zinc-500">
+          Arden24 is a trading journal and self-analysis tool. It does not provide financial advice, trade
+          recommendations, or signals. All trading decisions are made solely by the user.
         </p>
       </div>
     </main>

@@ -40,6 +40,11 @@ import {
   snapshotFormFromStrategy,
   withConfluenceRowKeys,
 } from "@/lib/strategy-form-helpers";
+import { useActivePlan } from "@/lib/subscriptions/use-active-plan";
+import {
+  normalizeChecklistForPlan,
+  persistedChecklistFromNormalized,
+} from "@/lib/subscriptions/tier-gates";
 
 type EditStrategyFormLoadedProps = {
   strategy: Strategy;
@@ -56,6 +61,7 @@ function EditStrategyFormLoaded({
 }: EditStrategyFormLoadedProps) {
   const router = useRouter();
   const { pushToast } = useAppToast();
+  const { plan: subscriptionPlan, loading: planLoading } = useActivePlan();
   const [form, setForm] = useState<StrategyFormFields>(() =>
     snapshotFormFromStrategy(strategy),
   );
@@ -202,7 +208,13 @@ function EditStrategyFormLoaded({
 
     setIsSaving(true);
     try {
-      const serverChecklist = checklistItems
+      if (planLoading) {
+        pushToast("Still loading your subscription. Please try again in a moment.", "error");
+        return;
+      }
+
+      const tierForSave = subscriptionPlan ?? "basic";
+      const rawServerChecklist = checklistItems
         .map((item) => ({
           text: item.text.trim(),
           timeframe: item.timeframe.trim(),
@@ -212,7 +224,10 @@ function EditStrategyFormLoaded({
           critical: item.critical,
         }))
         .filter((item) => item.text.length > 0);
-      const localChecklist = checklistItems
+      const serverChecklist = persistedChecklistFromNormalized(
+        normalizeChecklistForPlan(tierForSave, rawServerChecklist)
+      );
+      const rawLocalChecklist = checklistItems
         .map((item) => ({
           text: item.text.trim(),
           timeframe: item.timeframe.trim(),
@@ -222,6 +237,9 @@ function EditStrategyFormLoaded({
           critical: item.critical,
         }))
         .filter((item) => item.text.length > 0);
+      const localChecklist = persistedChecklistFromNormalized(
+        normalizeChecklistForPlan(tierForSave, rawLocalChecklist)
+      );
 
       if (supabase && user) {
         await updateStrategy(supabase, strategy.id, {
@@ -267,6 +285,8 @@ function EditStrategyFormLoaded({
       setScratchNotes={setScratchNotes}
       supabase={supabase}
       user={user ? { id: user.id } : null}
+      subscriptionPlan={subscriptionPlan}
+      planLoading={planLoading}
       saveAttempted={saveAttempted}
       setSaveAttempted={setSaveAttempted}
       onSubmit={handleSubmit}

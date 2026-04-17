@@ -25,6 +25,10 @@ export type StrategyConfluenceEditRowProps = {
   isLast: boolean;
   inputClass: string;
   imageLoading: "eager" | "lazy";
+  screenshotsLocked?: boolean;
+  timeframeTagsLocked?: boolean;
+  criticalLocked?: boolean;
+  insertRowsDisabled?: boolean;
   onOpenLightbox: (src: string, alt: string) => void;
   onImageChange: (index: number, e: ChangeEvent<HTMLInputElement>) => void;
   onRemoveScreenshot: (index: number) => void;
@@ -62,6 +66,10 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
     onInsertAbove,
     onInsertBelow,
     onRemove,
+    screenshotsLocked = false,
+    timeframeTagsLocked = false,
+    criticalLocked = false,
+    insertRowsDisabled = false,
   } = props;
 
   const score = confluenceScoreStyles(item.weight);
@@ -79,7 +87,16 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
       screenshotColumn={
         <>
           <ConfluenceScreenshotFrame>
-            {item.image ? (
+            {screenshotsLocked ? (
+              <div
+                className={`flex ${confluenceScreenshotMaxHeightClass} min-h-[96px] w-full flex-col items-center justify-center gap-1 rounded-lg border border-white/10 bg-zinc-950/80 p-3 text-center`}
+              >
+                <span className="text-[11px] font-medium text-zinc-300">Screenshots (Pro+)</span>
+                <span className="max-w-[14rem] text-[10px] leading-snug text-zinc-500">
+                  Chart screenshots unlock on Pro and Elite for self-review context.
+                </span>
+              </div>
+            ) : item.image ? (
               <button
                 type="button"
                 onClick={() =>
@@ -122,7 +139,7 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
               </label>
             )}
           </ConfluenceScreenshotFrame>
-          {item.image ? (
+          {!screenshotsLocked && item.image ? (
             <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5 gap-y-1">
               <label className="min-w-0 cursor-pointer text-[10px] text-sky-300/90">
                 <span className="inline-block rounded border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 font-medium">
@@ -201,7 +218,11 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
             <TimeframeTagsEditor
               value={item.timeframe}
               onChange={handleTimeframe}
+              disabled={timeframeTagsLocked}
             />
+            {timeframeTagsLocked ? (
+              <p className="mt-1 text-[10px] text-zinc-500">Timeframe tags unlock on Pro and Elite.</p>
+            ) : null}
           </div>
 
           <div
@@ -218,28 +239,32 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
               <button
                 type="button"
                 onClick={() => onCriticalChange(index, false)}
+                disabled={criticalLocked}
                 className={`min-h-11 flex-1 rounded-md py-2.5 text-xs font-semibold transition sm:min-h-0 sm:py-2 ${
                   !item.critical
                     ? "bg-white/12 text-white shadow-[0_1px_0_0_rgba(255,255,255,0.06)]"
                     : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
-                }`}
+                } ${criticalLocked ? "opacity-50" : ""}`}
               >
                 Standard
               </button>
               <button
                 type="button"
                 onClick={() => onCriticalChange(index, true)}
+                disabled={criticalLocked}
                 className={`min-h-11 flex-1 rounded-md py-2.5 text-xs font-semibold transition sm:min-h-0 sm:py-2 ${
                   item.critical
                     ? "border border-amber-500/35 bg-amber-500/20 text-amber-100 shadow-sm"
                     : "text-zinc-500 hover:bg-amber-500/10 hover:text-amber-200/90"
-                }`}
+                } ${criticalLocked ? "opacity-50" : ""}`}
               >
                 Critical
               </button>
             </div>
             <span className="mt-2 text-center text-[10px] leading-snug text-zinc-600">
-              Critical confluences must pass on the checklist
+              {criticalLocked
+                ? "Critical rules are available on Pro and Elite."
+                : "Critical confluences must pass on the checklist"}
             </span>
           </div>
         </>
@@ -267,6 +292,7 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
             <button
               type="button"
               onClick={() => onInsertAbove(index)}
+              disabled={insertRowsDisabled}
               className={confluenceActionBtnClass}
               aria-label="Insert a new confluence row above this one"
             >
@@ -275,6 +301,7 @@ function StrategyConfluenceEditRowInner(props: StrategyConfluenceEditRowProps) {
             <button
               type="button"
               onClick={() => onInsertBelow(index)}
+              disabled={insertRowsDisabled}
               className={confluenceActionBtnClass}
               aria-label="Insert a new confluence row below this one"
             >
@@ -318,7 +345,11 @@ function propsEqual(
     a.onMoveDown === b.onMoveDown &&
     a.onInsertAbove === b.onInsertAbove &&
     a.onInsertBelow === b.onInsertBelow &&
-    a.onRemove === b.onRemove
+    a.onRemove === b.onRemove &&
+    a.screenshotsLocked === b.screenshotsLocked &&
+    a.timeframeTagsLocked === b.timeframeTagsLocked &&
+    a.criticalLocked === b.criticalLocked &&
+    a.insertRowsDisabled === b.insertRowsDisabled
   );
 }
 

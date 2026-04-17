@@ -75,14 +75,14 @@ export function computeInsights(trades: Trade[]): Insight[] {
     if (best[1].pnl > 0) {
       insights.push({
         id: "best-market",
-        text: `${best[0]} is your best performing market so far.`,
+        text: `In your logged data, ${best[0]} has the highest total P/L among the markets shown here.`,
         type: "positive",
       });
     }
     if (worst[1].pnl < 0 && worst[0] !== best[0]) {
       insights.push({
         id: "worst-market",
-        text: `${worst[0]} is underperforming compared to your other markets.`,
+        text: `In your logged data, ${worst[0]} has the lowest total P/L among the markets shown here.`,
         type: "negative",
       });
     }
@@ -112,7 +112,7 @@ export function computeInsights(trades: Trade[]): Insight[] {
       if (worstSession[1].pnl < 0 && worstSession[0] !== bestSession[0]) {
         insights.push({
           id: "worst-session",
-          text: `${worstSession[0]} session is underperforming.`,
+          text: `In your logged data, ${worstSession[0]} session has the weakest total P/L among the sessions shown here.`,
           type: "negative",
         });
       }
@@ -148,7 +148,7 @@ export function computeInsights(trades: Trade[]): Insight[] {
     } else if (avgLoss > avgWin + 5) {
       insights.push({
         id: "confidence-losses",
-        text: "Lower-confidence trades are tending to win more than high-confidence ones — worth reviewing setup criteria.",
+        text: "In your logged data, lower-confidence trades have a higher win rate than higher-confidence ones — a pattern worth reviewing in your journal.",
         type: "neutral",
       });
     }
@@ -182,13 +182,13 @@ export function computeInsights(trades: Trade[]): Insight[] {
     if (winCount >= total * 0.6) {
       insights.push({
         id: "trend-wins",
-        text: "Most of your recent trades have been wins — strong consistency.",
+        text: "In your logged data, most recent closed trades have been wins.",
         type: "positive",
       });
     } else if (lossCount >= total * 0.6) {
       insights.push({
         id: "trend-losses",
-        text: "Most of your recent trades have been losses — consider tightening entry rules or reducing size.",
+        text: "In your logged data, most recent closed trades have been losses — useful context for your own process review.",
         type: "negative",
       });
     }
@@ -215,4 +215,50 @@ export function computeInsights(trades: Trade[]): Insight[] {
   const priority: Record<Insight["type"], number> = { positive: 0, neutral: 1, negative: 2 };
   ordered.sort((a, b) => priority[a.type] - priority[b.type]);
   return ordered.slice(0, 5);
+}
+
+/** Deeper observational breakdowns for Elite — from logged trades only. */
+export function computeEliteInsights(trades: Trade[]): Insight[] {
+  const out: Insight[] = [];
+  if (trades.length < 5) return out;
+
+  const withConf = trades.filter((t) => typeof t.confidence === "number");
+  if (withConf.length >= 6) {
+    const high = withConf.filter((t) => (t.confidence ?? 0) >= 8);
+    const low = withConf.filter((t) => (t.confidence ?? 0) < 8);
+    if (high.length >= 2 && low.length >= 2) {
+      const highWins = high.filter((t) => tradeOutcomeKind(t) === "win").length;
+      const lowWins = low.filter((t) => tradeOutcomeKind(t) === "win").length;
+      const highRate = Math.round((highWins / high.length) * 100);
+      const lowRate = Math.round((lowWins / low.length) * 100);
+      if (highRate > lowRate + 10) {
+        out.push({
+          id: "elite-score-quality",
+          text: `In your logged data, higher self-rated confidence (8+) has been associated with a higher win rate than lower confidence entries (${highRate}% vs ${lowRate}%).`,
+          type: "positive",
+        });
+      }
+    }
+  }
+
+  const byStrategy: Record<string, { pnl: number; count: number }> = {};
+  trades.forEach((t) => {
+    const s = t.strategy?.trim() || "";
+    if (!s) return;
+    if (!byStrategy[s]) byStrategy[s] = { pnl: 0, count: 0 };
+    byStrategy[s].pnl += canonicalRealisedPnl(t);
+    byStrategy[s].count += 1;
+  });
+  const stratRows = Object.entries(byStrategy).filter(([, v]) => v.count >= 2);
+  if (stratRows.length >= 2) {
+    const sorted = stratRows.sort((a, b) => b[1].pnl - a[1].pnl);
+    const top = sorted[0];
+    out.push({
+      id: "elite-strategy-spread",
+      text: `Among named strategies in your log, "${top[0]}" currently has the strongest total P/L (${stratRows.length} strategies compared).`,
+      type: top[1].pnl >= 0 ? "positive" : "neutral",
+    });
+  }
+
+  return out.slice(0, 4);
 }

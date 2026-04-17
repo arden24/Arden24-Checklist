@@ -1,6 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPasswordRecoverySession } from "@/lib/auth-recovery";
+import {
+  hasActiveAppSubscription,
+  pathRequiresActiveSubscription,
+} from "@/lib/supabase/subscription-access";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
@@ -20,7 +24,9 @@ export async function updateSession(request: NextRequest) {
     pathname === "/sign-up" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
-    pathname === "/auth/callback";
+    pathname === "/auth/callback" ||
+    pathname.startsWith("/api/stripe/webhook") ||
+    pathname.startsWith("/api/stripe/checkout");
   // Protected routes: redirect to sign-in if not authenticated
   // (dashboard, strategies, checklist, journal, open-trades, stats, account, calculator, etc.)
 
@@ -51,6 +57,10 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  console.log("[middleware] auth user", {
+    pathname,
+    userId: user?.id ?? null,
+  });
 
   const {
     data: { session },
@@ -74,9 +84,50 @@ export async function updateSession(request: NextRequest) {
       resetUrl.search = "";
       return NextResponse.redirect(resetUrl);
     }
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    return NextResponse.redirect(dashboardUrl);
+    const subscribed = await hasActiveAppSubscription(supabase, user.id);
+    console.log("[middleware] redirect from auth page", {
+      pathname,
+      userId: user.id,
+      subscribed,
+      destination: subscribed ? "/dashboard" : "/start",
+    });
+    const nextUrl = request.nextUrl.clone();
+    nextUrl.pathname = subscribed ? "/dashboard" : "/start";
+    nextUrl.search = "";
+    return NextResponse.redirect(nextUrl);
+  }
+
+  if (user && pathname === "/start") {
+    const subscribed = await hasActiveAppSubscription(supabase, user.id);
+    console.log("[middleware] start route gate", {
+      pathname,
+      userId: user.id,
+      subscribed,
+      redirectToDashboard: subscribed,
+    });
+    if (subscribed) {
+      const dash = request.nextUrl.clone();
+      dash.pathname = "/dashboard";
+      dash.search = "";
+      return NextResponse.redirect(dash);
+    }
+  }
+
+  if (
+    user &&
+    pathRequiresActiveSubscription(pathname) &&
+    !(await hasActiveAppSubscription(supabase, user.id))
+  ) {
+    console.log("[middleware] protected route blocked", {
+      pathname,
+      userId: user.id,
+      subscribed: false,
+      destination: "/start",
+    });
+    const startUrl = request.nextUrl.clone();
+    startUrl.pathname = "/start";
+    startUrl.search = "";
+    return NextResponse.redirect(startUrl);
   }
 
   return response;

@@ -17,6 +17,8 @@ import ScreenshotLightbox from "@/components/ScreenshotLightbox";
 import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAppToast } from "@/contexts/AppToastContext";
+import { useActivePlan } from "@/lib/subscriptions/use-active-plan";
+import { canUseProLiveTradeRatings } from "@/lib/subscriptions/tier-gates";
 
 function formatDate(key: string): string {
   const [y, m, d] = key.split("-");
@@ -80,6 +82,8 @@ export default function OpenTradesPage() {
   const { user } = useAuth();
   const { pushToast } = useAppToast();
   const supabase = useMemo(() => createClient(), []);
+  const { plan: subscriptionPlan, loading: planLoading } = useActivePlan();
+  const liveRatings = !planLoading && canUseProLiveTradeRatings(subscriptionPlan);
   const [openTrades, setOpenTrades] = useState<OpenTrade[]>([]);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [removeSubmitting, setRemoveSubmitting] = useState(false);
@@ -131,9 +135,9 @@ export default function OpenTradesPage() {
           pnl: parsed ?? 0,
           currency: closeForm.currency,
           thoughts: closeForm.thoughts.trim() || undefined,
-          rr: closeForm.rr.trim() || undefined,
+          rr: liveRatings ? closeForm.rr.trim() || undefined : undefined,
           closingScreenshot: closeForm.closingScreenshot ?? undefined,
-          rating: closeForm.rating ?? undefined,
+          rating: liveRatings ? closeForm.rating ?? undefined : undefined,
         },
         user.id,
         supabase
@@ -218,7 +222,7 @@ export default function OpenTradesPage() {
                     {(open.entryPrice != null || open.stopLoss != null || open.takeProfit != null) && (
                       <p className="mt-1 text-xs text-zinc-500">
                         Entry {open.entryPrice ?? "—"} · SL {open.stopLoss ?? "—"} · TP {open.takeProfit ?? "—"}
-                        {openTradeRR(open) && (
+                        {liveRatings && openTradeRR(open) && (
                           <span className="ml-2 text-sky-400">R:R {openTradeRR(open)}</span>
                         )}
                       </p>
@@ -368,20 +372,26 @@ export default function OpenTradesPage() {
                           options={CURRENCY_OPTIONS}
                         />
                       </div>
-                      <div>
-                        <label className="mb-1 block text-xs text-zinc-500">
-                          R:R (optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={closeForm.rr}
-                          onChange={(e) =>
-                            setDraft((f) => ({ ...f, rr: e.target.value }))
-                          }
-                          placeholder="2:1"
-                          className="w-full rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white"
-                        />
-                      </div>
+                      {liveRatings ? (
+                        <div>
+                          <label className="mb-1 block text-xs text-zinc-500">
+                            R:R (optional)
+                          </label>
+                          <input
+                            type="text"
+                            value={closeForm.rr}
+                            onChange={(e) =>
+                              setDraft((f) => ({ ...f, rr: e.target.value }))
+                            }
+                            placeholder="2:1"
+                            className="w-full rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white"
+                          />
+                        </div>
+                      ) : !planLoading ? (
+                        <div className="sm:col-span-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[11px] text-zinc-400">
+                          R:R and trade ratings unlock on Pro for your own process tracking.
+                        </div>
+                      ) : null}
                     </div>
                     <div>
                       <label className="mb-1 block text-xs text-zinc-500">
@@ -397,32 +407,34 @@ export default function OpenTradesPage() {
                         rows={2}
                       />
                     </div>
-                    <div>
-                      <label className="mb-1 block text-xs text-zinc-500">
-                        Rate this trade (1–10)
-                      </label>
-                      <div className="flex flex-wrap gap-1">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() =>
-                              setDraft((f) => ({
-                                ...f,
-                                rating: f.rating === n ? null : n,
-                              }))
-                            }
-                            className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${
-                              closeForm.rating === n
-                                ? "bg-sky-500 text-black"
-                                : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
-                            }`}
-                          >
-                            {n}
-                          </button>
-                        ))}
+                    {liveRatings ? (
+                      <div>
+                        <label className="mb-1 block text-xs text-zinc-500">
+                          Rate this trade (1–10)
+                        </label>
+                        <div className="flex flex-wrap gap-1">
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() =>
+                                setDraft((f) => ({
+                                  ...f,
+                                  rating: f.rating === n ? null : n,
+                                }))
+                              }
+                              className={`h-8 w-8 rounded-lg text-sm font-medium transition-colors ${
+                                closeForm.rating === n
+                                  ? "bg-sky-500 text-black"
+                                  : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
+                              }`}
+                            >
+                              {n}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
                     <div>
                       <label className="mb-1 block text-xs text-zinc-500">
                         Closing screenshot (After)

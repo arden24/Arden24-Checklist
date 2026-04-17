@@ -5,6 +5,10 @@
   --foreground: #d4d4d4;
   --accent: #38bdf8;
   --muted: #a3a3a3;
+  --workspace-card: rgba(15, 23, 42, 0.65);
+  --workspace-card-border: rgba(255, 255, 255, 0.1);
+  --workspace-muted-surface: rgba(0, 0, 0, 0.35);
+  --workspace-header: rgba(0, 0, 0, 0.92);
   /** Interactive UI (buttons, rows, dropdown triggers) — keep in sync across components */
   --arden-ui-duration: 150ms;
   --arden-ui-ease: cubic-bezier(0.32, 0.72, 0, 1);
@@ -13,6 +17,38 @@
    * Keep in sync with components/Navbar.tsx inner vertical padding.
    */
   --app-header-offset: calc(env(safe-area-inset-top, 0px) + 4.25rem);
+}
+
+html[data-workspace-theme="midnight"] {
+  --background: #020617;
+  --foreground: #e2e8f0;
+  --accent: #7dd3fc;
+  --muted: #94a3b8;
+  --workspace-card: rgba(15, 23, 42, 0.75);
+  --workspace-card-border: rgba(125, 211, 252, 0.12);
+  --workspace-muted-surface: rgba(2, 6, 23, 0.55);
+  --workspace-header: rgba(2, 6, 23, 0.94);
+}
+
+html[data-workspace-theme="graphite"] {
+  --background: #171717;
+  --foreground: #e5e5e5;
+  --accent: #a3a3a3;
+  --muted: #a3a3a3;
+  --workspace-card: rgba(24, 24, 27, 0.85);
+  --workspace-card-border: rgba(255, 255, 255, 0.08);
+  --workspace-muted-surface: rgba(0, 0, 0, 0.45);
+}
+
+html[data-workspace-theme="forest"] {
+  --background: #0c1410;
+  --foreground: #d8ebe3;
+  --accent: #34d399;
+  --muted: #86b8a3;
+  --workspace-card: rgba(6, 24, 16, 0.72);
+  --workspace-card-border: rgba(52, 211, 153, 0.14);
+  --workspace-muted-surface: rgba(0, 0, 0, 0.4);
+  --workspace-header: rgba(12, 20, 16, 0.94);
 }
 
 @theme inline {

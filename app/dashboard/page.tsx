@@ -35,6 +35,10 @@ import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { TextConfirmDialog } from "@/components/TextConfirmDialog";
 import { useAppToast } from "@/contexts/AppToastContext";
+import FeatureLockCard from "@/components/subscriptions/FeatureLockCard";
+import { hasPlanAccess } from "@/lib/subscriptions/access";
+import { useActivePlan } from "@/lib/subscriptions/use-active-plan";
+import { canUseProAdvancedStats } from "@/lib/subscriptions/tier-gates";
 
 type ResetWizardStep = "idle" | "step1" | "step2" | "step3";
 
@@ -114,6 +118,7 @@ export default function DashboardPage() {
   const tradesLoadSeq = useRef(0);
   const [isResetting, setIsResetting] = useState(false);
   const [resetWizard, setResetWizard] = useState<ResetWizardStep>("idle");
+  const { plan: userPlan, loading: planLoaded } = useActivePlan();
 
   const loadTradesData = useCallback(async () => {
     const seq = ++tradesLoadSeq.current;
@@ -227,6 +232,8 @@ export default function DashboardPage() {
     () => computeStats(closedTrades, openTradesCount),
     [closedTrades, openTradesCount]
   );
+  const canUsePerformance = hasPlanAccess(userPlan, "pro");
+  const canUseAdvStats = canUseProAdvancedStats(userPlan);
 
   function normaliseChecklistItems(strategy: Strategy): ChecklistItem[] {
     return (strategy.checklist ?? []).map((item: any) =>
@@ -266,28 +273,42 @@ export default function DashboardPage() {
             <SummaryCard title="Net P/L" value={stats.netPnlStr} subtitle="Total from closed trades" />
             <SummaryCard title="Win Rate" value={`${stats.winRate}%`} subtitle="Profitable closed trades" />
           </div>
-          <div className="mt-4 grid min-w-0 gap-4 *:min-w-0 sm:grid-cols-2 lg:grid-cols-4">
-            <SummaryCard
-              title="Best Day"
-              value={stats.bestDay ? formatPnl(stats.bestDay.pnl) : "—"}
-              subtitle={stats.bestDay ? formatDateLabel(stats.bestDay.date) : "No closed trades yet"}
-            />
-            <SummaryCard
-              title="Worst Day"
-              value={stats.worstDay ? formatPnl(stats.worstDay.pnl) : "—"}
-              subtitle={stats.worstDay ? formatDateLabel(stats.worstDay.date) : "No data yet"}
-            />
-            <SummaryCard
-              title="Best Traded Asset"
-              value={stats.bestTradedAsset ? stats.bestTradedAsset.name : "—"}
-              subtitle={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "No closed trades yet"}
-            />
-            <SummaryCard
-              title="Most Traded Market"
-              value={stats.mostTradedMarket}
-              subtitle="By trade count"
-            />
-          </div>
+          {!planLoaded ? (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/60 p-6 text-sm text-zinc-400">
+              Loading stats…
+            </div>
+          ) : canUseAdvStats ? (
+            <div className="mt-4 grid min-w-0 gap-4 *:min-w-0 sm:grid-cols-2 lg:grid-cols-4">
+              <SummaryCard
+                title="Best Day"
+                value={stats.bestDay ? formatPnl(stats.bestDay.pnl) : "—"}
+                subtitle={stats.bestDay ? formatDateLabel(stats.bestDay.date) : "No closed trades yet"}
+              />
+              <SummaryCard
+                title="Worst Day"
+                value={stats.worstDay ? formatPnl(stats.worstDay.pnl) : "—"}
+                subtitle={stats.worstDay ? formatDateLabel(stats.worstDay.date) : "No data yet"}
+              />
+              <SummaryCard
+                title="Best Traded Asset"
+                value={stats.bestTradedAsset ? stats.bestTradedAsset.name : "—"}
+                subtitle={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "No closed trades yet"}
+              />
+              <SummaryCard
+                title="Most Traded Market"
+                value={stats.mostTradedMarket}
+                subtitle="By trade count"
+              />
+            </div>
+          ) : (
+            <div className="mt-4">
+              <FeatureLockCard
+                requiredPlan="pro"
+                title="Advanced dashboard stats"
+                description="See best / worst days, strongest assets, and busiest markets from your own closed trades."
+              />
+            </div>
+          )}
         </section>
 
         <section id="dashboard-trades" className="space-y-4">
@@ -332,12 +353,22 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="mt-4 min-h-[280px]">
-              <PerformanceChart
-                useParentTrades
-                closedTrades={closedTrades}
-                openTrades={openTradesList}
-                dataReady={tradesReady}
-              />
+              {!planLoaded ? (
+                <PanelSkeleton lines={3} minHeight="min-h-[16rem]" />
+              ) : canUsePerformance ? (
+                <PerformanceChart
+                  useParentTrades
+                  closedTrades={closedTrades}
+                  openTrades={openTradesList}
+                  dataReady={tradesReady}
+                />
+              ) : (
+                <FeatureLockCard
+                  requiredPlan="pro"
+                  title="Performance analytics"
+                  description="Unlock detailed performance charts and trend visibility."
+                />
+              )}
             </div>
           </div>
         </section>

@@ -1,0 +1,10 @@
+Open components/start/PostCheckoutActivation.tsx and show me the exact logic that powers the "Activating your access..." state.
+
+I want to see:
+1. how it checks whether the user has an active subscription
+2. whether it calls an API route or queries Supabase directly
+3. what field names it reads
+4. when it redirects to /dashboard
+5. any retry or polling interval logic
+
+Do not change code yet. Just show me the exact component code.

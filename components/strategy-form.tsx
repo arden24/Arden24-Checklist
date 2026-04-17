@@ -27,6 +27,13 @@ import {
   emptyStrategyFormFields,
   withConfluenceRowKeys,
 } from "@/lib/strategy-form-helpers";
+import { useActivePlan } from "@/lib/subscriptions/use-active-plan";
+import {
+  BASIC_MAX_STRATEGIES,
+  isBasicTier,
+  normalizeChecklistForPlan,
+  persistedChecklistFromNormalized,
+} from "@/lib/subscriptions/tier-gates";
 
 function loadStrategies(key: string): Strategy[] {
   if (typeof window === "undefined") return [];
@@ -52,6 +59,7 @@ export default function StrategyForm() {
   const { pushToast } = useAppToast();
   const supabase = createClient();
   const strategiesKey = getStrategiesKey(user?.id);
+  const { plan: subscriptionPlan, loading: planLoading } = useActivePlan();
 
   const [form, setForm] = useState<StrategyFormFields>(STRATEGY_NEW_INITIAL);
   const [scratchNotes, setScratchNotes] = useState("");
@@ -180,7 +188,13 @@ export default function StrategyForm() {
 
     setIsSubmitting(true);
     try {
-      const serverChecklist = checklistItems
+      if (planLoading) {
+        pushToast("Still loading your subscription. Please try again in a moment.", "error");
+        return;
+      }
+
+      const tierForSave = subscriptionPlan ?? "basic";
+      const rawServerChecklist = checklistItems
         .map((item) => ({
           text: item.text.trim(),
           timeframe: item.timeframe.trim(),
@@ -190,7 +204,10 @@ export default function StrategyForm() {
           critical: item.critical,
         }))
         .filter((item) => item.text.length > 0);
-      const localChecklist = checklistItems
+      const serverChecklist = persistedChecklistFromNormalized(
+        normalizeChecklistForPlan(tierForSave, rawServerChecklist)
+      );
+      const rawLocalChecklist = checklistItems
         .map((item) => ({
           text: item.text.trim(),
           timeframe: item.timeframe.trim(),
@@ -200,11 +217,28 @@ export default function StrategyForm() {
           critical: item.critical,
         }))
         .filter((item) => item.text.length > 0);
+      const localChecklist = persistedChecklistFromNormalized(
+        normalizeChecklistForPlan(tierForSave, rawLocalChecklist)
+      );
 
       let savedToSupabase = false;
 
       if (supabase && user) {
         try {
+          if (isBasicTier(subscriptionPlan)) {
+            const { count, error: countError } = await supabase
+              .from("strategies")
+              .select("id", { count: "exact", head: true })
+              .eq("user_id", user.id);
+            if (countError) throw countError;
+            if ((count ?? 0) >= BASIC_MAX_STRATEGIES) {
+              pushToast(
+                `Basic includes up to ${BASIC_MAX_STRATEGIES} strategies. Upgrade to Pro for unlimited.`,
+                "error",
+              );
+              return;
+            }
+          }
           await insertStrategy(supabase, user.id, {
             name: name.trim(),
             description: description.trim(),
@@ -251,6 +285,8 @@ export default function StrategyForm() {
       setScratchNotes={setScratchNotes}
       supabase={supabase}
       user={user ? { id: user.id } : null}
+      subscriptionPlan={subscriptionPlan}
+      planLoading={planLoading}
       saveAttempted={saveAttempted}
       setSaveAttempted={setSaveAttempted}
       onSubmit={handleSubmit}

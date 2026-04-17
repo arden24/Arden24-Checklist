@@ -36,6 +36,13 @@ import {
 import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAppToast } from "@/contexts/AppToastContext";
+import FeatureLockCard from "@/components/subscriptions/FeatureLockCard";
+import { useActivePlan } from "@/lib/subscriptions/use-active-plan";
+import {
+  canUseProAdvancedStats,
+  canUseProGoalsAndAccount,
+  canUseProJournalCalendar,
+} from "@/lib/subscriptions/tier-gates";
 
 function dateKey(d: Date): string {
   const y = d.getFullYear();
@@ -110,6 +117,7 @@ function computeStats(closedTrades: Trade[], openTradesCount: number) {
 export default function JournalPage() {
   const { user } = useAuth();
   const { pushToast } = useAppToast();
+  const { plan: subscriptionPlan, loading: planLoading } = useActivePlan();
   const supabase = useMemo(() => createClient(), []);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [openTradesCount, setOpenTradesCount] = useState(0);
@@ -228,7 +236,19 @@ export default function JournalPage() {
 
         </header>
 
-        <JournalAccountProgress closedTrades={trades} />
+        {planLoading ? (
+          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 text-sm text-zinc-400">
+            Loading account tools…
+          </div>
+        ) : canUseProGoalsAndAccount(subscriptionPlan) ? (
+          <JournalAccountProgress closedTrades={trades} />
+        ) : (
+          <FeatureLockCard
+            requiredPlan="pro"
+            title="Goals & account tracking"
+            description="Track milestones and funding-style progress from your own closed-trade history."
+          />
+        )}
 
         <section className="space-y-6">
           <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -238,66 +258,94 @@ export default function JournalPage() {
             <SummaryCard title="Win Rate" value={`${stats.winRate}%`} subtitle="Profitable trades" />
           </section>
 
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <SummaryCard
-              title="Best Day"
-              value={stats.bestDay ? formatPnl(stats.bestDay.pnl) : "—"}
-              subtitle={stats.bestDay ? formatDateLabel(stats.bestDay.date) : "No closed trades yet"}
+          {planLoading ? (
+            <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 text-sm text-zinc-400">
+              Loading stats…
+            </div>
+          ) : canUseProAdvancedStats(subscriptionPlan) ? (
+            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <SummaryCard
+                title="Best Day"
+                value={stats.bestDay ? formatPnl(stats.bestDay.pnl) : "—"}
+                subtitle={stats.bestDay ? formatDateLabel(stats.bestDay.date) : "No closed trades yet"}
+              />
+              <SummaryCard
+                title="Worst Day"
+                value={stats.worstDay ? formatPnl(stats.worstDay.pnl) : "—"}
+                subtitle={stats.worstDay ? formatDateLabel(stats.worstDay.date) : "No closed trades yet"}
+              />
+              <SummaryCard
+                title="Best Traded Asset"
+                value={stats.bestTradedAsset ? stats.bestTradedAsset.name : "—"}
+                subtitle={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "No closed trades yet"}
+              />
+              <SummaryCard
+                title="Most Traded Market"
+                value={stats.mostTradedMarket}
+                subtitle="By trade count"
+              />
+            </section>
+          ) : (
+            <FeatureLockCard
+              requiredPlan="pro"
+              title="Advanced journal stats"
+              description="See best / worst days, strongest assets, and busiest markets from your own closed trades."
             />
-            <SummaryCard
-              title="Worst Day"
-              value={stats.worstDay ? formatPnl(stats.worstDay.pnl) : "—"}
-              subtitle={stats.worstDay ? formatDateLabel(stats.worstDay.date) : "No closed trades yet"}
-            />
-            <SummaryCard
-              title="Best Traded Asset"
-              value={stats.bestTradedAsset ? stats.bestTradedAsset.name : "—"}
-              subtitle={stats.bestTradedAsset ? formatPnl(stats.bestTradedAsset.pnl) : "No closed trades yet"}
-            />
-            <SummaryCard
-              title="Most Traded Market"
-              value={stats.mostTradedMarket}
-              subtitle="By trade count"
-            />
-          </section>
+          )}
 
           <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-            <PerformanceInsights trades={trades} />
+            <PerformanceInsights
+              trades={trades}
+              subscriptionPlan={subscriptionPlan}
+              planLoading={planLoading}
+            />
           </section>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
-          <JournalCalendar
-            year={year}
-            month={month}
-            trades={tradesInMonth}
-            selectedDate={selectedDate}
-            onSelectDay={setSelectedDate}
-          />
-
-          <div className="min-h-[320px] lg:min-h-[420px]">
-            {selectedDate ? (
-              <JournalDayDetail
-                date={selectedDate}
-                trades={tradesOnSelectedDay}
-                onCancelTrade={requestCancelTrade}
-              />
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-slate-950/80 p-8 text-center">
-                <p className="text-sm font-medium text-zinc-400">
-                  Select a day
-                </p>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Tap or click a day in the calendar to see trades and notes.
-                </p>
-              </div>
-            )}
+        {planLoading ? (
+          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 text-sm text-zinc-400">
+            Loading calendar…
           </div>
-        </div>
+        ) : canUseProJournalCalendar(subscriptionPlan) ? (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+            <JournalCalendar
+              year={year}
+              month={month}
+              trades={tradesInMonth}
+              selectedDate={selectedDate}
+              onSelectDay={setSelectedDate}
+            />
 
-        <p className="text-xs text-zinc-500">
-          This app is designed for trading discipline, journaling and self-review.
-          It does not provide financial advice.
+            <div className="min-h-[320px] lg:min-h-[420px]">
+              {selectedDate ? (
+                <JournalDayDetail
+                  date={selectedDate}
+                  trades={tradesOnSelectedDay}
+                  onCancelTrade={requestCancelTrade}
+                />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-slate-950/80 p-8 text-center">
+                  <p className="text-sm font-medium text-zinc-400">
+                    Select a day
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Tap or click a day in the calendar to see trades and notes.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <FeatureLockCard
+            requiredPlan="pro"
+            title="Journal calendar & daily breakdown"
+            description="Browse your month on a calendar and review each day’s closed trades in one place."
+          />
+        )}
+
+        <p className="text-xs leading-relaxed text-zinc-500">
+          Arden24 is a trading journal and self-analysis tool. It does not provide financial advice, trade
+          recommendations, or signals. All trading decisions are made solely by the user.
         </p>
       </div>
 

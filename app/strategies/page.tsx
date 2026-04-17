@@ -15,11 +15,15 @@ import {
   deleteStrategy as deleteStrategyApi,
   type Strategy,
 } from "@/lib/supabase/strategies";
+import { useActivePlan } from "@/lib/subscriptions/use-active-plan";
+import { BASIC_MAX_STRATEGIES, isBasicTier } from "@/lib/subscriptions/tier-gates";
+import FeatureLockCard from "@/components/subscriptions/FeatureLockCard";
 
 export default function StrategiesPage() {
   const { user } = useAuth();
   const { pushToast } = useAppToast();
   const supabase = useMemo(() => createClient(), []);
+  const { plan: subscriptionPlan, loading: planLoading } = useActivePlan();
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -64,6 +68,11 @@ export default function StrategiesPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const atBasicStrategyCap =
+    !planLoading &&
+    isBasicTier(subscriptionPlan) &&
+    strategies.length >= BASIC_MAX_STRATEGIES;
 
   function requestDelete(id: string) {
     setDeleteTargetId(id);
@@ -114,13 +123,31 @@ export default function StrategiesPage() {
               accountable before every trade.
             </p>
           </div>
-          <Link
-            href="/strategies/new"
-            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black touch-manipulation transition-colors duration-150 ease-out hover:bg-sky-400 active:bg-sky-600 sm:w-auto sm:min-h-0"
-          >
-            + New strategy
-          </Link>
+          {planLoading ? (
+            <span className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/30 px-5 py-3 text-sm text-zinc-400 sm:w-auto sm:min-h-0">
+              Loading…
+            </span>
+          ) : atBasicStrategyCap ? (
+            <span className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl border border-white/10 bg-zinc-900/80 px-5 py-3 text-sm font-medium text-zinc-500 sm:w-auto sm:min-h-0">
+              Strategy limit reached (Basic)
+            </span>
+          ) : (
+            <Link
+              href="/strategies/new"
+              className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-black touch-manipulation transition-colors duration-150 ease-out hover:bg-sky-400 active:bg-sky-600 sm:w-auto sm:min-h-0"
+            >
+              + New strategy
+            </Link>
+          )}
         </header>
+
+        {atBasicStrategyCap ? (
+          <FeatureLockCard
+            requiredPlan="pro"
+            title="Unlimited strategies"
+            description="Basic includes up to two playbooks. Upgrade to Pro or Elite to add as many strategies as you need for your own review process."
+          />
+        ) : null}
 
         {loading ? (
           <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-8 text-center text-sm text-zinc-400">

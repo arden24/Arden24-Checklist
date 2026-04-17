@@ -24,6 +24,15 @@ import {
   hasMaterialForKeyPointGenerate,
   mockGenerateStrategyKeyPoints,
 } from "@/lib/strategy-key-points-mock";
+import type { PlanKey } from "@/lib/subscriptions/plans";
+import {
+  BASIC_MAX_CONFLUENCES,
+  canUseEliteKeyPointGenerate,
+  canUseProCriticalConfluence,
+  canUseProScreenshots,
+  canUseProTimeframeTags,
+  isBasicTier,
+} from "@/lib/subscriptions/tier-gates";
 
 export const STRATEGY_BUILDER_INPUT_CLASS =
   "w-full min-w-0 rounded-lg border border-white/10 bg-zinc-900/80 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40";
@@ -57,6 +66,9 @@ export type StrategyBuilderFormProps = {
   setScratchNotes: (value: string) => void;
   supabase: SupabaseClient | null;
   user: { id: string } | null;
+  /** Resolved subscription tier; null after load means Basic limits. */
+  subscriptionPlan: PlanKey | null;
+  planLoading: boolean;
   saveAttempted: boolean;
   setSaveAttempted: (value: boolean) => void;
   onSubmit: (e: FormEvent) => void | Promise<void>;
@@ -73,6 +85,8 @@ export function StrategyBuilderForm({
   setScratchNotes,
   supabase,
   user,
+  subscriptionPlan,
+  planLoading,
   saveAttempted,
   setSaveAttempted,
   onSubmit,
@@ -83,6 +97,14 @@ export function StrategyBuilderForm({
 }: StrategyBuilderFormProps) {
   const { pushToast } = useAppToast();
   const { name, description, market, timeframes, checklistItems } = form;
+
+  const tierReady = !planLoading;
+  const basicTier = tierReady && isBasicTier(subscriptionPlan);
+  const screenshotsLocked = tierReady && !canUseProScreenshots(subscriptionPlan);
+  const timeframeLocked = tierReady && !canUseProTimeframeTags(subscriptionPlan);
+  const criticalLocked = tierReady && !canUseProCriticalConfluence(subscriptionPlan);
+  const insertRowsDisabled = basicTier && checklistItems.length >= BASIC_MAX_CONFLUENCES;
+  const eliteKeyPoints = tierReady && canUseEliteKeyPointGenerate(subscriptionPlan);
 
   const [generatedKeyPoints, setGeneratedKeyPoints] = useState<string[]>([]);
   const [generateFeedback, setGenerateFeedback] = useState<string | null>(null);
@@ -114,6 +136,10 @@ export function StrategyBuilderForm({
   }, []);
 
   function runGenerate() {
+    if (!eliteKeyPoints) {
+      setGenerateFeedback("AI-style key point drafts are available on Elite. Upgrade in Billing to unlock.");
+      return;
+    }
     if (!canAttemptGenerate) {
       setGenerateFeedback(
         "Add a strategy summary (about 20+ characters), optional scratch notes, and/or at least one confluence with text — then generate key points.",
@@ -155,11 +181,21 @@ export function StrategyBuilderForm({
   }, [setForm]);
 
   const addConfluence = useCallback(() => {
-    setForm((f) => ({
-      ...f,
-      checklistItems: [...f.checklistItems, blankConfluence()],
-    }));
-  }, [setForm]);
+    setForm((f) => {
+      if (
+        !planLoading &&
+        isBasicTier(subscriptionPlan) &&
+        f.checklistItems.length >= BASIC_MAX_CONFLUENCES
+      ) {
+        pushToast(`Basic includes up to ${BASIC_MAX_CONFLUENCES} confluences. Upgrade to Pro for unlimited.`, "error");
+        return f;
+      }
+      return {
+        ...f,
+        checklistItems: [...f.checklistItems, blankConfluence()],
+      };
+    });
+  }, [setForm, subscriptionPlan, planLoading, pushToast]);
 
   const removeConfluence = useCallback(
     (index: number) => {
@@ -200,34 +236,55 @@ export function StrategyBuilderForm({
 
   const insertConfluenceAt = useCallback(
     (index: number) => {
-      setForm((f) => ({
-        ...f,
-        checklistItems: [
-          ...f.checklistItems.slice(0, index),
-          blankConfluence(),
-          ...f.checklistItems.slice(index),
-        ],
-      }));
+      setForm((f) => {
+        if (
+          !planLoading &&
+          isBasicTier(subscriptionPlan) &&
+          f.checklistItems.length >= BASIC_MAX_CONFLUENCES
+        ) {
+          pushToast(`Basic includes up to ${BASIC_MAX_CONFLUENCES} confluences.`, "error");
+          return f;
+        }
+        return {
+          ...f,
+          checklistItems: [
+            ...f.checklistItems.slice(0, index),
+            blankConfluence(),
+            ...f.checklistItems.slice(index),
+          ],
+        };
+      });
     },
-    [setForm],
+    [setForm, subscriptionPlan, planLoading, pushToast],
   );
 
   const insertConfluenceBelow = useCallback(
     (index: number) => {
-      setForm((f) => ({
-        ...f,
-        checklistItems: [
-          ...f.checklistItems.slice(0, index + 1),
-          blankConfluence(),
-          ...f.checklistItems.slice(index + 1),
-        ],
-      }));
+      setForm((f) => {
+        if (
+          !planLoading &&
+          isBasicTier(subscriptionPlan) &&
+          f.checklistItems.length >= BASIC_MAX_CONFLUENCES
+        ) {
+          pushToast(`Basic includes up to ${BASIC_MAX_CONFLUENCES} confluences.`, "error");
+          return f;
+        }
+        return {
+          ...f,
+          checklistItems: [
+            ...f.checklistItems.slice(0, index + 1),
+            blankConfluence(),
+            ...f.checklistItems.slice(index + 1),
+          ],
+        };
+      });
     },
-    [setForm],
+    [setForm, subscriptionPlan, planLoading, pushToast],
   );
 
   const updateTimeframe = useCallback(
     (index: number, value: string) => {
+      if (timeframeLocked) return;
       setForm((f) => ({
         ...f,
         checklistItems: f.checklistItems.map((item, i) =>
@@ -235,11 +292,12 @@ export function StrategyBuilderForm({
         ),
       }));
     },
-    [setForm],
+    [setForm, timeframeLocked],
   );
 
   const updateCriticalRule = useCallback(
     (index: number, value: boolean) => {
+      if (criticalLocked && value) return;
       setForm((f) => ({
         ...f,
         checklistItems: f.checklistItems.map((item, i) =>
@@ -247,7 +305,7 @@ export function StrategyBuilderForm({
         ),
       }));
     },
-    [setForm],
+    [setForm, criticalLocked],
   );
 
   const updateConfluenceWeight = useCallback(
@@ -288,6 +346,10 @@ export function StrategyBuilderForm({
     async (index: number, event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
+      if (screenshotsLocked) {
+        pushToast("Chart screenshots are available on Pro and Elite.", "error");
+        return;
+      }
       try {
         if (supabase && user) {
           const uploaded = await uploadChecklistImage(supabase, user.id, file);
@@ -323,7 +385,7 @@ export function StrategyBuilderForm({
       };
       reader.readAsDataURL(file);
     },
-    [supabase, user, setForm],
+    [supabase, user, setForm, screenshotsLocked, pushToast],
   );
 
   const removeChecklistScreenshot = useCallback(
@@ -399,7 +461,7 @@ export function StrategyBuilderForm({
               <button
                 type="button"
                 onClick={runGenerate}
-                disabled={isGenerating}
+                disabled={isGenerating || planLoading || !eliteKeyPoints}
                 className={generateBtnClass}
               >
                 {isGenerating
@@ -419,10 +481,9 @@ export function StrategyBuilderForm({
             </div>
           </div>
           <p className={hintClass}>
-            Mock helper: builds 4–8 execution-focused bullets from your summary,
-            Notes & saved details (scratch notes, market, timeframes), and
-            confluence rows. Regenerate refreshes the list; Remove clears it.
-            Not saved to the server.
+            Elite-only mock helper: drafts observational bullets from your saved
+            strategy text and confluences for self-review (not advice). Not saved
+            to the server.
           </p>
           {generateFeedback ? (
             <p className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-100/90">
@@ -490,7 +551,8 @@ export function StrategyBuilderForm({
             <button
               type="button"
               onClick={addConfluence}
-              className="shrink-0 self-start rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-200 hover:bg-sky-500/15 sm:self-auto"
+              disabled={planLoading || insertRowsDisabled}
+              className="shrink-0 self-start rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-200 hover:bg-sky-500/15 disabled:cursor-not-allowed disabled:opacity-40 sm:self-auto"
             >
               + Add confluence
             </button>
@@ -509,6 +571,10 @@ export function StrategyBuilderForm({
                   isLast={index === checklistItems.length - 1}
                   inputClass={STRATEGY_BUILDER_INPUT_CLASS}
                   imageLoading={index < 2 ? "eager" : "lazy"}
+                  screenshotsLocked={screenshotsLocked}
+                  timeframeTagsLocked={timeframeLocked}
+                  criticalLocked={criticalLocked}
+                  insertRowsDisabled={insertRowsDisabled}
                   onOpenLightbox={openScreenshotLightbox}
                   onImageChange={handleChecklistImageChange}
                   onRemoveScreenshot={removeChecklistScreenshot}

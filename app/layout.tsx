@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppHeader from "@/components/AppHeader";
+import AppFooterDisclaimer from "@/components/AppFooterDisclaimer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppToastProvider } from "@/contexts/AppToastContext";
+import { WorkspaceThemeProvider } from "@/components/workspace/WorkspaceThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,14 +39,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} h-full min-h-screen w-full max-w-full antialiased`}
       >
-        <div className="flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden bg-black text-white">
+        <div className="flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden bg-background text-foreground">
           <AuthProvider>
-            <AppToastProvider>
-              <AppHeader />
-              <div className="min-w-0 w-full max-w-full flex-1 overflow-x-hidden pb-[env(safe-area-inset-bottom,0px)] pt-[var(--app-header-offset)]">
-                {children}
-              </div>
-            </AppToastProvider>
+            <WorkspaceThemeProvider>
+              <AppToastProvider>
+                <AppHeader />
+                <div className="min-w-0 w-full max-w-full flex-1 overflow-x-hidden bg-background pb-[env(safe-area-inset-bottom,0px)] pt-[var(--app-header-offset)]">
+                  {children}
+                </div>
+                <AppFooterDisclaimer />
+              </AppToastProvider>
+            </WorkspaceThemeProvider>
           </AuthProvider>
         </div>
       </body>

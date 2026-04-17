@@ -16,7 +16,7 @@ import { ARDEN24_TRADES_UPDATED_EVENT } from "@/lib/trades-updated";
 
 /** Fixed app bar; main padding uses `globals.css` `--app-header-offset`. Drawers sit above (higher z-index). */
 const appHeaderShellClass =
-  "fixed inset-x-0 top-0 z-50 w-full border-b border-white/10 bg-black/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md shadow-[0_12px_40px_rgba(15,23,42,0.9)]";
+  "fixed inset-x-0 top-0 z-50 w-full border-b border-[var(--workspace-card-border)] bg-[var(--workspace-header)] pt-[env(safe-area-inset-top,0px)] backdrop-blur-md shadow-[0_12px_40px_rgba(15,23,42,0.9)]";
 
 export default function Navbar() {
   const router = useRouter();
