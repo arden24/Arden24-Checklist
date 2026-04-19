@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
+import { resolveSiteBaseForStripe } from "@/lib/stripe/resolve-site-base";
 import { getAllowedPriceIds, planFromPriceId } from "@/lib/stripe/subscription-plan";
 
 const STRIPE_API_VERSION = "2026-03-25.dahlia" as const;
@@ -53,13 +54,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!process.env.NEXT_PUBLIC_SITE_URL?.trim()) {
-      return NextResponse.json(
-        { error: "NEXT_PUBLIC_SITE_URL is not set (required for checkout redirect URLs)." },
-        { status: 500 }
-      );
-    }
-
     const supabase = await createClient();
     const {
       data: { user },
@@ -103,8 +97,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Could not resolve plan for price." }, { status: 500 });
     }
 
-    const success_url = `${process.env.NEXT_PUBLIC_SITE_URL}/start?success=true`;
-    const cancel_url = `${process.env.NEXT_PUBLIC_SITE_URL}/start?canceled=true`;
+    const siteBase = resolveSiteBaseForStripe(request);
+    if (!siteBase) {
+      return NextResponse.json(
+        {
+          error:
+            "Could not determine site URL for checkout redirects. Set NEXT_PUBLIC_SITE_URL or use a valid Host / X-Forwarded-Host.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const success_url = `${siteBase}/start?success=true`;
+    const cancel_url = `${siteBase}/start?canceled=true`;
 
     console.log("[stripe/checkout] selected plan:", planName);
     console.log("[stripe/checkout] resolved price ID:", priceId);

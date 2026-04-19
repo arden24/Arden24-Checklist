@@ -1,19 +1,26 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
+import { resolveSiteBaseForStripe } from "@/lib/stripe/resolve-site-base";
 
 const STRIPE_API_VERSION = "2026-03-25.dahlia" as const;
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
     if (!secretKey) {
       return NextResponse.json({ error: "STRIPE_SECRET_KEY is not set." }, { status: 500 });
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-    if (!siteUrl) {
-      return NextResponse.json({ error: "NEXT_PUBLIC_SITE_URL is not set." }, { status: 500 });
+    const siteBase = resolveSiteBaseForStripe(request);
+    if (!siteBase) {
+      return NextResponse.json(
+        {
+          error:
+            "Could not determine site URL for return_url. Set NEXT_PUBLIC_SITE_URL or use a request with a valid Host / X-Forwarded-Host.",
+        },
+        { status: 500 }
+      );
     }
 
     const supabase = await createClient();
@@ -35,24 +42,37 @@ export async function POST() {
       .maybeSingle();
 
     if (error) {
+      console.error("[stripe/customer-portal] Supabase read subscriptions", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        userId: user.id,
+      });
       return NextResponse.json(
-        { error: "Failed to read subscription customer ID.", details: error.message },
+        { error: "Failed to read subscription data.", details: error.message },
         { status: 500 }
       );
     }
 
     const stripeCustomerId = data?.stripe_customer_id?.trim() ?? "";
     if (!stripeCustomerId) {
+      console.warn("[stripe/customer-portal] missing stripe_customer_id", { userId: user.id });
       return NextResponse.json(
-        { error: "No Stripe customer ID found for this user." },
+        {
+          error:
+            "No Stripe customer on file yet. Complete checkout on this environment first, or wait a moment for the subscription to sync.",
+        },
         { status: 400 }
       );
     }
 
     const stripe = new Stripe(secretKey, { apiVersion: STRIPE_API_VERSION });
+    const returnUrl = `${siteBase}/account`;
+
     const session = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
-      return_url: `${siteUrl}/account`,
+      return_url: returnUrl,
     });
 
     if (!session.url) {
@@ -65,6 +85,13 @@ export async function POST() {
     return NextResponse.json({ url: session.url });
   } catch (error: unknown) {
     if (error instanceof Stripe.errors.StripeError) {
+      console.error("[stripe/customer-portal] StripeError", {
+        type: error.type,
+        code: error.code,
+        message: error.message,
+        statusCode: error.statusCode,
+        doc_url: error.doc_url,
+      });
       return NextResponse.json(
         { error: error.message },
         {

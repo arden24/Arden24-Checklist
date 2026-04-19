@@ -26,7 +26,8 @@ export async function updateSession(request: NextRequest) {
     pathname === "/reset-password" ||
     pathname === "/auth/callback" ||
     pathname.startsWith("/api/stripe/webhook") ||
-    pathname.startsWith("/api/stripe/checkout");
+    pathname.startsWith("/api/stripe/checkout") ||
+    pathname.startsWith("/api/stripe/customer-portal");
   // Protected routes: redirect to sign-in if not authenticated
   // (dashboard, strategies, checklist, journal, open-trades, stats, account, calculator, etc.)
 

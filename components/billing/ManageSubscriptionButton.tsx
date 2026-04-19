@@ -18,11 +18,33 @@ export default function ManageSubscriptionButton() {
     try {
       const response = await fetch("/api/stripe/customer-portal", {
         method: "POST",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
       });
-      const body = (await response.json()) as PortalResponse;
 
-      if (!response.ok || !body.url) {
-        throw new Error(body.error ?? "Failed to open billing portal.");
+      const raw = await response.text();
+      let body: PortalResponse = {};
+      try {
+        body = raw ? (JSON.parse(raw) as PortalResponse) : {};
+      } catch {
+        console.error("[billing] customer portal non-JSON body", {
+          status: response.status,
+          preview: raw.slice(0, 300),
+        });
+        alert(
+          `Could not open subscription manager (${response.status}). If you were signed out, sign in and try again.`
+        );
+        return;
+      }
+
+      if (!response.ok || typeof body.url !== "string" || !body.url) {
+        const msg =
+          typeof body.error === "string" && body.error.trim().length > 0
+            ? body.error.trim()
+            : `Request failed (${response.status}).`;
+        console.error("[billing] customer portal", { status: response.status, body });
+        alert(msg);
+        return;
       }
 
       window.location.href = body.url;
