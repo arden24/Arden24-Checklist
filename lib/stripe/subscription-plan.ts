@@ -1,20 +1,25 @@
 export type SubscriptionPlanName = "basic" | "pro" | "elite";
 
-const BASIC = process.env.STRIPE_PRICE_BASIC?.trim();
-const PRO = process.env.STRIPE_PRICE_PRO?.trim();
-const ELITE = process.env.STRIPE_PRICE_ELITE?.trim();
+/** Live Stripe price IDs (Arden24 production). */
+export const STRIPE_PRICE_BASIC = "price_1TOLRCLlqz2DC4OAYLncBPgy";
+export const STRIPE_PRICE_PRO = "price_1TOLP6Llqz2DC4OAUeH8ZTXr";
+export const STRIPE_PRICE_ELITE = "price_1TOLRZLlqz2DC4OARWz5Oj8x";
+
+const BASIC = STRIPE_PRICE_BASIC;
+const PRO = STRIPE_PRICE_PRO;
+const ELITE = STRIPE_PRICE_ELITE;
 
 export function planFromPriceId(priceId: string): SubscriptionPlanName | null {
   const id = priceId.trim();
   if (!id) return null;
-  if (BASIC && id === BASIC) return "basic";
-  if (PRO && id === PRO) return "pro";
-  if (ELITE && id === ELITE) return "elite";
+  if (id === BASIC) return "basic";
+  if (id === PRO) return "pro";
+  if (id === ELITE) return "elite";
   return null;
 }
 
 export function getAllowedPriceIds(): string[] {
-  return [BASIC, PRO, ELITE].filter((id): id is string => Boolean(id));
+  return [BASIC, PRO, ELITE];
 }
 
 export function normalizedPlanFromMetadata(value: unknown): SubscriptionPlanName | null {

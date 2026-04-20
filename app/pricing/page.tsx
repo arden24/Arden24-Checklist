@@ -1,12 +1,17 @@
 import Link from "next/link";
 import PricingCheckoutButtons from "@/components/PricingCheckoutButtons";
+import {
+  STRIPE_PRICE_BASIC,
+  STRIPE_PRICE_ELITE,
+  STRIPE_PRICE_PRO,
+} from "@/lib/stripe/subscription-plan";
 import { createClient } from "@/lib/supabase/server";
 import { getActivePlanFromSubscriptionRow, getPlanLabel } from "@/lib/subscriptions/access";
 
 export default async function PricingPage() {
-  const basicPriceId = process.env.STRIPE_PRICE_BASIC?.trim() ?? "";
-  const proPriceId = process.env.STRIPE_PRICE_PRO?.trim() ?? "";
-  const elitePriceId = process.env.STRIPE_PRICE_ELITE?.trim() ?? "";
+  const basicPriceId = STRIPE_PRICE_BASIC;
+  const proPriceId = STRIPE_PRICE_PRO;
+  const elitePriceId = STRIPE_PRICE_ELITE;
   const pricesConfigured = Boolean(basicPriceId && proPriceId && elitePriceId);
   let currentPlan = null;
   let subscriptionStatus: string | null = null;

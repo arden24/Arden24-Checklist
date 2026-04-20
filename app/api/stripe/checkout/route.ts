@@ -40,20 +40,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "STRIPE_SECRET_KEY is not set." }, { status: 500 });
     }
 
-    if (
-      !process.env.STRIPE_PRICE_BASIC?.trim() ||
-      !process.env.STRIPE_PRICE_PRO?.trim() ||
-      !process.env.STRIPE_PRICE_ELITE?.trim()
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Missing Stripe price IDs: STRIPE_PRICE_BASIC, STRIPE_PRICE_PRO, and STRIPE_PRICE_ELITE must all be set.",
-        },
-        { status: 500 }
-      );
-    }
-
     const supabase = await createClient();
     const {
       data: { user },

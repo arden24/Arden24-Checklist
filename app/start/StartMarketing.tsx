@@ -1,13 +1,18 @@
 import Link from "next/link";
 import StartPricingCards from "@/components/start/StartPricingCards";
+import {
+  STRIPE_PRICE_BASIC,
+  STRIPE_PRICE_ELITE,
+  STRIPE_PRICE_PRO,
+} from "@/lib/stripe/subscription-plan";
 import { createClient } from "@/lib/supabase/server";
 import { getActivePlanFromSubscriptionRow } from "@/lib/subscriptions/access";
 import type { PlanKey } from "@/lib/subscriptions/plans";
 
 export default async function StartMarketing() {
-  const basicPriceId = process.env.STRIPE_PRICE_BASIC?.trim() ?? "";
-  const proPriceId = process.env.STRIPE_PRICE_PRO?.trim() ?? "";
-  const elitePriceId = process.env.STRIPE_PRICE_ELITE?.trim() ?? "";
+  const basicPriceId = STRIPE_PRICE_BASIC;
+  const proPriceId = STRIPE_PRICE_PRO;
+  const elitePriceId = STRIPE_PRICE_ELITE;
   const pricesConfigured = Boolean(basicPriceId && proPriceId && elitePriceId);
   let currentPlan: PlanKey | null = null;
 

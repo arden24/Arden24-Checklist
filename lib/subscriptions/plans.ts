@@ -1,3 +1,9 @@
+import {
+  STRIPE_PRICE_BASIC,
+  STRIPE_PRICE_ELITE,
+  STRIPE_PRICE_PRO,
+} from "@/lib/stripe/subscription-plan";
+
 export type PlanKey = "basic" | "pro" | "elite";
 
 export type PlanDefinition = {
@@ -5,9 +11,9 @@ export type PlanDefinition = {
   features: string[];
 };
 
-const BASIC_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC?.trim() ?? "";
-const PRO_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO?.trim() ?? "";
-const ELITE_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_PRICE_ELITE?.trim() ?? "";
+const BASIC_PRICE_ID = STRIPE_PRICE_BASIC;
+const PRO_PRICE_ID = STRIPE_PRICE_PRO;
+const ELITE_PRICE_ID = STRIPE_PRICE_ELITE;
 
 export const PLAN_DEFINITIONS: Record<PlanKey, PlanDefinition> = {
   basic: {
