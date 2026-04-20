@@ -1,3 +1,5 @@
+import { ALLOWED_CHECKOUT_PRICE_IDS, isAllowedCheckoutPriceId } from "@/lib/stripe/subscription-plan";
+
 export type SubscriptionCheckoutResponse = { url?: unknown; error?: unknown };
 
 function alertMessageFromResponse(
@@ -24,6 +26,14 @@ export async function requestSubscriptionCheckout(
     const message = "Missing price id.";
     console.error("[stripe/checkout]", message);
     return { ok: false, message };
+  }
+
+  if (!isAllowedCheckoutPriceId(trimmed)) {
+    console.error("[stripe/checkout] priceId not in allowed set", {
+      priceId: trimmed,
+      allowedPriceIds: [...ALLOWED_CHECKOUT_PRICE_IDS],
+    });
+    return { ok: false, message: "Invalid price selection." };
   }
 
   let res: Response;

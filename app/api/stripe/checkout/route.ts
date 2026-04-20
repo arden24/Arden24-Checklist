@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { resolveSiteBaseForStripe } from "@/lib/stripe/resolve-site-base";
-import { getAllowedPriceIds, planFromPriceId } from "@/lib/stripe/subscription-plan";
+import {
+  ALLOWED_CHECKOUT_PRICE_IDS,
+  planFromPriceId,
+} from "@/lib/stripe/subscription-plan";
 
 const STRIPE_API_VERSION = "2026-03-25.dahlia" as const;
+
+const allowedPriceIds: string[] = [...ALLOWED_CHECKOUT_PRICE_IDS];
 
 type ApiErrorBody = { error: string };
 
@@ -55,6 +60,8 @@ export async function POST(request: Request) {
     }
 
     const priceId = extractPriceId(parsedBody.value);
+    console.log("[stripe/checkout] incoming priceId:", priceId ?? "(missing)");
+
     if (!priceId) {
       return NextResponse.json(
         { error: "Invalid or missing priceId: expected a non-empty string." },
@@ -62,18 +69,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const allowed = getAllowedPriceIds();
-    if (allowed.length === 0) {
+    if (!allowedPriceIds.includes(priceId)) {
+      console.warn("[stripe/checkout] priceId not in allowedPriceIds", {
+        priceId,
+        allowedPriceIds,
+      });
       return NextResponse.json(
-        { error: "No allowed subscription prices are configured on the server." },
-        { status: 500 }
-      );
-    }
-
-    const allowedSet = new Set(allowed);
-    if (!allowedSet.has(priceId)) {
-      return NextResponse.json(
-        { error: "Invalid priceId: must match a configured subscription price." },
+        { error: "Invalid priceId: must be one of the configured subscription prices." },
         { status: 400 }
       );
     }
@@ -98,7 +100,8 @@ export async function POST(request: Request) {
     const cancel_url = `${siteBase}/start?canceled=true`;
 
     console.log("[stripe/checkout] selected plan:", planName);
-    console.log("[stripe/checkout] resolved price ID:", priceId);
+    console.log("[stripe/checkout] validated priceId:", priceId);
+    console.log("[stripe/checkout] allowedPriceIds:", allowedPriceIds);
     console.log("[stripe/checkout] checkout mode:", "subscription");
     console.log("[stripe/checkout] success_url:", success_url);
     console.log("[stripe/checkout] cancel_url:", cancel_url);

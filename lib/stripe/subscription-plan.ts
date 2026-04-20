@@ -1,9 +1,15 @@
 export type SubscriptionPlanName = "basic" | "pro" | "elite";
 
-/** Live Stripe price IDs (Arden24 production). */
-export const STRIPE_PRICE_BASIC = "price_1TOLRCLlqz2DC4OAYLncBPgy";
-export const STRIPE_PRICE_PRO = "price_1TOLP6Llqz2DC4OAUeH8ZTXr";
-export const STRIPE_PRICE_ELITE = "price_1TOLRZLlqz2DC4OARWz5Oj8x";
+/** Only these Stripe price IDs are valid for subscription checkout. */
+export const ALLOWED_CHECKOUT_PRICE_IDS = [
+  "price_1TOLRCLlqz2DC4OAYLncBPgy",
+  "price_1TOLP6Llqz2DC4OAUeH8ZTXr",
+  "price_1TOLRZLlqz2DC4OARWz5Oj8x",
+] as const;
+
+export const STRIPE_PRICE_BASIC = ALLOWED_CHECKOUT_PRICE_IDS[0];
+export const STRIPE_PRICE_PRO = ALLOWED_CHECKOUT_PRICE_IDS[1];
+export const STRIPE_PRICE_ELITE = ALLOWED_CHECKOUT_PRICE_IDS[2];
 
 const BASIC = STRIPE_PRICE_BASIC;
 const PRO = STRIPE_PRICE_PRO;
@@ -19,7 +25,12 @@ export function planFromPriceId(priceId: string): SubscriptionPlanName | null {
 }
 
 export function getAllowedPriceIds(): string[] {
-  return [BASIC, PRO, ELITE];
+  return [...ALLOWED_CHECKOUT_PRICE_IDS];
+}
+
+export function isAllowedCheckoutPriceId(priceId: string): boolean {
+  const id = priceId.trim();
+  return (ALLOWED_CHECKOUT_PRICE_IDS as readonly string[]).includes(id);
 }
 
 export function normalizedPlanFromMetadata(value: unknown): SubscriptionPlanName | null {

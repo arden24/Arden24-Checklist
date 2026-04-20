@@ -3,36 +3,37 @@
 import { useCallback, useState } from "react";
 import AppButton from "@/components/AppButton";
 import { requestSubscriptionCheckout } from "@/lib/stripe/client-subscription-checkout";
+import {
+  STRIPE_PRICE_BASIC,
+  STRIPE_PRICE_ELITE,
+  STRIPE_PRICE_PRO,
+} from "@/lib/stripe/subscription-plan";
 import { getPlanActionLabel } from "@/lib/subscriptions/access";
 import { PLAN_DETAILS } from "@/lib/subscriptions/plan-details";
 import type { PlanKey } from "@/lib/subscriptions/plans";
 
+const PRICE_ID_BY_PLAN: Record<PlanKey, string> = {
+  basic: STRIPE_PRICE_BASIC,
+  pro: STRIPE_PRICE_PRO,
+  elite: STRIPE_PRICE_ELITE,
+};
+
 export type StartPricingCardsProps = {
-  basicPriceId: string;
-  proPriceId: string;
-  elitePriceId: string;
   currentPlan?: PlanKey | null;
 };
 
 const START_TIERS: {
   key: PlanKey;
   price: string;
-  priceIdKey: "basicPriceId" | "proPriceId" | "elitePriceId";
   ctaLabel: string;
   popular?: boolean;
 }[] = [
-  { key: "basic", price: "£15", priceIdKey: "basicPriceId", ctaLabel: "Start Basic" },
-  { key: "pro", price: "£29", priceIdKey: "proPriceId", ctaLabel: "Start Pro", popular: true },
-  { key: "elite", price: "£49", priceIdKey: "elitePriceId", ctaLabel: "Go Elite" },
+  { key: "basic", price: "£15", ctaLabel: "Start Basic" },
+  { key: "pro", price: "£29", ctaLabel: "Start Pro", popular: true },
+  { key: "elite", price: "£49", ctaLabel: "Go Elite" },
 ];
 
-export default function StartPricingCards({
-  basicPriceId,
-  proPriceId,
-  elitePriceId,
-  currentPlan = null,
-}: StartPricingCardsProps) {
-  const ids = { basicPriceId, proPriceId, elitePriceId };
+export default function StartPricingCards({ currentPlan = null }: StartPricingCardsProps) {
   const [busy, setBusy] = useState<string | null>(null);
 
   const onSubscribe = useCallback(async (label: string, priceId: string) => {
@@ -55,8 +56,7 @@ export default function StartPricingCards({
     <div className="grid items-stretch gap-6 md:grid-cols-3 md:gap-5">
       {START_TIERS.map((tier) => {
         const detail = PLAN_DETAILS[tier.key];
-        const priceId = ids[tier.priceIdKey];
-        const configured = Boolean(priceId.trim());
+        const priceId = PRICE_ID_BY_PLAN[tier.key];
         const isBusy = busy !== null;
         const thisBusy = busy === detail.label;
         const isPopular = Boolean(tier.popular);
@@ -70,8 +70,8 @@ export default function StartPricingCards({
               isCurrentPlan
                 ? "border-sky-300/80 bg-sky-950/35 p-7 ring-2 ring-sky-400/50 shadow-[0_0_42px_rgba(56,189,248,0.2),0_22px_70px_rgba(15,23,42,0.95)]"
                 : isPopular
-                ? "z-[1] border-sky-400/55 p-7 shadow-[0_0_48px_rgba(56,189,248,0.18),0_22px_70px_rgba(15,23,42,0.95)] ring-2 ring-sky-500/30 md:scale-[1.03]"
-                : "border-slate-800/80 p-6"
+                  ? "z-[1] border-sky-400/55 p-7 shadow-[0_0_48px_rgba(56,189,248,0.18),0_22px_70px_rgba(15,23,42,0.95)] ring-2 ring-sky-500/30 md:scale-[1.03]"
+                  : "border-slate-800/80 p-6"
             }`}
           >
             {isCurrentPlan ? (
@@ -102,9 +102,8 @@ export default function StartPricingCards({
               type="button"
               variant="primary"
               className="mt-6 w-full"
-              disabled={isBusy || !configured || isCurrentPlan}
+              disabled={isBusy || isCurrentPlan}
               aria-busy={thisBusy}
-              title={!configured ? "Price ID not configured on server" : undefined}
               onClick={() => void onSubscribe(detail.label, priceId)}
             >
               {thisBusy ? "Redirecting…" : ctaLabel}

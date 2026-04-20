@@ -1,19 +1,10 @@
 import Link from "next/link";
 import StartPricingCards from "@/components/start/StartPricingCards";
-import {
-  STRIPE_PRICE_BASIC,
-  STRIPE_PRICE_ELITE,
-  STRIPE_PRICE_PRO,
-} from "@/lib/stripe/subscription-plan";
 import { createClient } from "@/lib/supabase/server";
 import { getActivePlanFromSubscriptionRow } from "@/lib/subscriptions/access";
 import type { PlanKey } from "@/lib/subscriptions/plans";
 
 export default async function StartMarketing() {
-  const basicPriceId = STRIPE_PRICE_BASIC;
-  const proPriceId = STRIPE_PRICE_PRO;
-  const elitePriceId = STRIPE_PRICE_ELITE;
-  const pricesConfigured = Boolean(basicPriceId && proPriceId && elitePriceId);
   let currentPlan: PlanKey | null = null;
 
   try {
@@ -127,30 +118,9 @@ export default async function StartMarketing() {
             Simple monthly tiers. Cancel any time in the Stripe customer portal.
           </p>
 
-          {!pricesConfigured ? (
-            <div
-              className="mx-auto mt-8 max-w-2xl rounded-lg border border-amber-700/80 bg-amber-950/40 px-4 py-3 text-sm text-amber-100"
-              role="alert"
-            >
-              <p className="font-medium text-amber-50">Checkout is not fully configured.</p>
-              <p className="mt-2 text-amber-100/90">
-                Set <code className="rounded bg-black/30 px-1">STRIPE_PRICE_BASIC</code>,{" "}
-                <code className="rounded bg-black/30 px-1">STRIPE_PRICE_PRO</code>, and{" "}
-                <code className="rounded bg-black/30 px-1">STRIPE_PRICE_ELITE</code> in{" "}
-                <code className="rounded bg-black/30 px-1">.env.local</code>, then restart the dev
-                server.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-10">
-              <StartPricingCards
-                basicPriceId={basicPriceId}
-                proPriceId={proPriceId}
-                elitePriceId={elitePriceId}
-                currentPlan={currentPlan}
-              />
-            </div>
-          )}
+          <div className="mt-10">
+            <StartPricingCards currentPlan={currentPlan} />
+          </div>
 
           <div className="mx-auto mt-10 max-w-xl space-y-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-xs text-zinc-400">
             <p>Access to Arden24 requires an active subscription.</p>
