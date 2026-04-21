@@ -1,3 +1,8 @@
+/**
+ * Stripe subscription → Supabase sync helpers. Called only after the webhook route validates
+ * `STRIPE_WEBHOOK_SECRET` and constructs the event. There is no Stripe webhook-secret guard here;
+ * failures to create the Supabase admin client are handled in `app/api/stripe/webhook/route.ts`.
+ */
 import Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {

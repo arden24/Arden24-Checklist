@@ -77,8 +77,15 @@ export async function POST(request: Request) {
       admin = createAdminClient();
       console.log("9. admin client created");
     } catch (err) {
-      console.error("[stripe/webhook] admin client", err);
-      return NextResponse.json({ error: "Server is not configured for webhooks." }, { status: 500 });
+      console.error(
+        "[stripe/webhook] Supabase admin client failed (STRIPE_WEBHOOK_SECRET was already verified above).",
+        err
+      );
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Supabase service-role client could not be created.";
+      return NextResponse.json({ error: message }, { status: 500 });
     }
 
     try {
