@@ -2,8 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import TradeForm from "@/components/trade-form";
+import StrategyCard from "@/components/strategy-card";
 import SummaryCard from "@/components/SummaryCard";
+import StrategyChecklist from "@/components/StrategyChecklist";
+import ImageUploader from "@/components/ImageUploader";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 
 const LotSizeCalculator = dynamic(() => import("@/components/lot-size-calculator"), {
@@ -21,6 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { loadTrades, loadOpenTrades, type OpenTrade } from "@/lib/journal";
 import { getStrategiesKey, getBestStrategyImageKey, getTradesKey, getOpenTradesKey } from "@/lib/storage-keys";
 import { createClient } from "@/lib/supabase/client";
+import { fetchStrategies, type Strategy, type ChecklistItem } from "@/lib/supabase/strategies";
 import { fetchTrades } from "@/lib/supabase/trades";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
 import type { Trade } from "@/lib/supabase/trades";
@@ -105,6 +110,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { pushToast } = useAppToast();
   const supabase = useMemo(() => createClient(), []);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
   const [openTradesList, setOpenTradesList] = useState<OpenTrade[]>([]);
   const [openTradesCount, setOpenTradesCount] = useState(0);
@@ -170,6 +176,25 @@ export default function DashboardPage() {
     };
   }, [loadTradesData]);
 
+  const loadStrategies = useCallback(() => {
+    if (supabase && user) {
+      fetchStrategies(supabase).then(setStrategies).catch(logError);
+    } else if (typeof window !== "undefined") {
+      const key = getStrategiesKey(user?.id);
+      try {
+        const raw = window.localStorage.getItem(key);
+        const parsed = raw ? (JSON.parse(raw) as Strategy[]) : [];
+        setStrategies(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setStrategies([]);
+      }
+    }
+  }, [supabase, user]);
+
+  useEffect(() => {
+    loadStrategies();
+  }, [loadStrategies]);
+
   async function executeResetAllDataConfirmed() {
     setIsResetting(true);
     try {
@@ -192,6 +217,7 @@ export default function DashboardPage() {
         keys.forEach((key) => window.localStorage.removeItem(key));
       }
       void loadTradesData();
+      loadStrategies();
       pushToast("All data has been reset. Reloading the page…", "success");
       window.location.reload();
     } catch (err) {
@@ -208,6 +234,26 @@ export default function DashboardPage() {
   );
   const canUsePerformance = hasPlanAccess(userPlan, "pro");
   const canUseAdvStats = canUseProAdvancedStats(userPlan);
+
+  function normaliseChecklistItems(strategy: Strategy): ChecklistItem[] {
+    return (strategy.checklist ?? []).map((item: any) =>
+      typeof item === "string"
+        ? {
+            text: item,
+            timeframe: "",
+            image: undefined,
+            weight: 1,
+            critical: false,
+          }
+        : {
+            text: item.text ?? "",
+            timeframe: item.timeframe ?? "",
+            image: item.image,
+            weight: Number.isFinite(Number(item.weight)) ? Number(item.weight) : 1,
+            critical: Boolean(item.critical),
+          }
+    );
+  }
 
   return (
     <main className="min-h-screen w-full max-w-full min-w-0 overflow-x-hidden bg-slate-950 py-6 text-white sm:py-8">
@@ -325,6 +371,109 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+        </section>
+
+        <section
+          id="dashboard-strategies"
+          className="grid min-w-0 gap-6 *:min-w-0 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_minmax(0,0.9fr)]"
+        >
+          <div className="min-w-0 space-y-4 rounded-2xl border border-sky-500/30 bg-slate-950/70 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-white">Best Strategy</h2>
+              <span className="text-[10px] uppercase tracking-[0.16em] text-sky-400">
+                Focus
+              </span>
+            </div>
+            <p className="text-xs text-zinc-500">
+              Pin the setup you want to focus on right now. Upload a chart
+              screenshot as a visual anchor.
+            </p>
+            <div className="mt-3">
+              <ImageUploader storageKey={getBestStrategyImageKey(user?.id)} />
+            </div>
+          </div>
+
+          <div className="min-w-0 space-y-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-white">Current Strategy</h2>
+              <Link
+                href="/strategies"
+                className="text-[11px] font-medium text-sky-400 hover:text-sky-300"
+              >
+                Open builder
+              </Link>
+            </div>
+            <div className="rounded-xl bg-black/40 p-3 text-sm text-zinc-100">
+              <p className="font-semibold">London Reversal</p>
+              <p className="mt-1 text-xs text-zinc-400">
+                Forex · Timeframes: 1H, 15M, 5M
+              </p>
+
+              <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
+                <div className="rounded-lg bg-slate-950/80 p-2">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                    Win Rate
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-sky-400">0%</p>
+                </div>
+                <div className="rounded-lg bg-slate-950/80 p-2">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                    Avg. R:R
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-white">0.0:1</p>
+                </div>
+                <div className="rounded-lg bg-slate-950/80 p-2">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+                    Trades
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-white">0</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs text-zinc-400">
+              <p>
+                Link this to one of your saved strategies in the builder once
+                you have real stats.
+              </p>
+              <Link
+                href="/strategies/new"
+                className="inline-flex text-[11px] font-medium text-sky-400 hover:text-sky-300"
+              >
+                Create new strategy →
+              </Link>
+            </div>
+
+                {strategies.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-zinc-300">
+                  Saved strategies
+                </p>
+                <div className="space-y-2">
+                    {strategies.slice(0, 2).map((strategy) => (
+                      <StrategyCard key={strategy.id} strategy={strategy} />
+                    ))}
+                  {strategies.length > 2 && (
+                    <Link
+                      href="/strategies"
+                      className="block text-[11px] font-medium text-sky-400 hover:text-sky-300"
+                    >
+                      View all {strategies.length} strategies →
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <StrategyChecklist
+            items={[
+              "Breakout level confirmed",
+              "Retest of level",
+              "Strong momentum in direction of trade",
+              "Higher time frame bias aligned",
+            ]}
+          />
         </section>
 
         <section
