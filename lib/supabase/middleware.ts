@@ -2,6 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPasswordRecoverySession } from "@/lib/auth-recovery";
 import {
+  hasAcceptedProfileTerms,
+  pathnameExemptFromTermsEnforcement,
+} from "@/lib/supabase/profile-terms";
+import {
   hasActiveAppSubscription,
   pathRequiresActiveSubscription,
 } from "@/lib/supabase/subscription-access";
@@ -24,6 +28,8 @@ export async function updateSession(request: NextRequest) {
     pathname === "/sign-up" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
+    pathname === "/terms" ||
+    pathname === "/privacy" ||
     pathname === "/auth/callback" ||
     pathname.startsWith("/api/stripe/webhook") ||
     pathname.startsWith("/api/stripe/checkout") ||
@@ -73,13 +79,26 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(signInUrl);
   }
 
+  const recoveryFromQuery =
+    request.nextUrl.searchParams.get("type") === "recovery";
+  const inPasswordRecoveryFlow =
+    recoveryFromQuery ||
+    isPasswordRecoverySession(session?.access_token);
+
+  if (
+    user &&
+    !inPasswordRecoveryFlow &&
+    !(await hasAcceptedProfileTerms(supabase, user.id)) &&
+    !pathnameExemptFromTermsEnforcement(pathname)
+  ) {
+    const acceptUrl = request.nextUrl.clone();
+    acceptUrl.pathname = "/legal/accept";
+    acceptUrl.search = "";
+    return NextResponse.redirect(acceptUrl);
+  }
+
   if (user && (pathname === "/sign-in" || pathname === "/sign-up")) {
-    const recoveryFromQuery =
-      request.nextUrl.searchParams.get("type") === "recovery";
-    if (
-      recoveryFromQuery ||
-      isPasswordRecoverySession(session?.access_token)
-    ) {
+    if (inPasswordRecoveryFlow) {
       const resetUrl = request.nextUrl.clone();
       resetUrl.pathname = "/reset-password";
       resetUrl.search = "";
