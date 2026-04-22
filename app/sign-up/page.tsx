@@ -26,6 +26,7 @@ export default function SignUpPage() {
   const [errorSuggestion, setErrorSuggestion] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<"signed_in" | "confirm_email" | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // If already logged in: recovery sessions must finish on /reset-password, not /dashboard
   useEffect(() => {
@@ -54,6 +55,10 @@ export default function SignUpPage() {
       setError("Please enter your password");
       return;
     }
+    if (!agreedToTerms) {
+      setError("Please confirm you agree to the Terms of use and Privacy policy");
+      return;
+    }
     setEmail(emailTrimmed);
     setLoading(true);
     try {
@@ -75,7 +80,22 @@ export default function SignUpPage() {
         setLoading(false);
         return;
       }
-      if (data.session) {
+      if (data.session && data.user?.id) {
+        const acceptedAt = new Date().toISOString();
+        const { error: profileErr } = await supabase.from("profiles").upsert(
+          {
+            user_id: data.user.id,
+            accepted_terms: true,
+            accepted_terms_at: acceptedAt,
+          },
+          { onConflict: "user_id" }
+        );
+        if (profileErr) {
+          logAuthError("signUp profile terms", profileErr);
+          setError("Account created, but we could not save your terms acceptance. Please try again from the legal page.");
+          setLoading(false);
+          return;
+        }
         setLoading(false);
         setSuccess("signed_in");
         router.push("/dashboard");
@@ -188,6 +208,27 @@ export default function SignUpPage() {
             />
             <span className="text-xs text-zinc-500">At least 6 characters</span>
           </div>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-3 text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-zinc-800 text-sky-600 focus:ring-sky-500/40"
+              required
+            />
+            <span>
+              I agree to the{" "}
+              <Link href="/terms" className="font-medium text-sky-400 hover:text-sky-300">
+                Terms of use
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="font-medium text-sky-400 hover:text-sky-300">
+                Privacy policy
+              </Link>
+              .
+            </span>
+          </label>
 
           <AppButton type="submit" disabled={loading} className="w-full font-medium">
             {loading ? "Creating account..." : "Sign up"}
