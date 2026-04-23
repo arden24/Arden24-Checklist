@@ -69,7 +69,15 @@ const LOT_CALC_INITIAL: LotCalcSessionState = {
   stopLossPips: 20,
 };
 
-export default function LotSizeCalculator() {
+type LotSizeCalculatorProps = {
+  /**
+   * When true (e.g. dashboard next to TradeForm), omit the inner title and match the
+   * trade form’s outer shell (`mt-8 rounded-xl bg-zinc-900 …`) so grey panels align.
+   */
+  embedded?: boolean;
+};
+
+export default function LotSizeCalculator({ embedded = false }: LotSizeCalculatorProps) {
   const [calc, setCalc, resetCalc] = useArden24SessionDraft<LotCalcSessionState>(
     ARDEN24_LOT_SIZE_DRAFT_KEY,
     LOT_CALC_INITIAL,
@@ -141,9 +149,15 @@ export default function LotSizeCalculator() {
   const inputClass = "rounded-xl bg-zinc-800 px-4 py-3 text-sm text-white outline-none w-full";
   const labelClass = "text-sm text-zinc-300";
 
+  const shellClass = embedded
+    ? "mt-8 w-full min-w-0 max-w-full rounded-xl bg-zinc-900 p-4 sm:p-6"
+    : "w-full min-w-0 max-w-full rounded-2xl border border-white/10 bg-zinc-900 p-4 shadow-lg sm:p-6";
+
   return (
-    <div className="w-full min-w-0 max-w-full rounded-2xl border border-white/10 bg-zinc-900 p-4 shadow-lg sm:p-6">
-      <h2 className="mb-4 text-2xl font-semibold text-white">Lot Size Calculator</h2>
+    <div className={shellClass}>
+      {!embedded ? (
+        <h2 className="mb-4 text-2xl font-semibold text-white">Lot Size Calculator</h2>
+      ) : null}
 
       <div className="mb-4">
         <AppSelect

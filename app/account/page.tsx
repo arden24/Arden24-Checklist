@@ -9,6 +9,11 @@ import SupabaseConfigHelp from "@/components/SupabaseConfigHelp";
 import { getAuthErrorDisplay, logAuthError } from "@/lib/auth-errors";
 import { isValidEmail } from "@/lib/auth-validation";
 import { getAuthCallbackRedirectUrl } from "@/lib/auth-redirect-url";
+import {
+  persistTextSizePreference,
+  readTextSizeFromStorage,
+  type TextSizePreference,
+} from "@/lib/text-size-preference";
 import { getActivePlanFromSubscriptionRow } from "@/lib/subscriptions/access";
 import { PLAN_DETAILS, PLAN_ORDER } from "@/lib/subscriptions/plan-details";
 import PageContainer from "@/components/PageContainer";
@@ -49,6 +54,12 @@ export default function AccountPage() {
   const [subscription, setSubscription] = useState<SubscriptionSummary | null | undefined>(
     undefined
   );
+
+  const [textSize, setTextSize] = useState<TextSizePreference>("normal");
+
+  useEffect(() => {
+    setTextSize(readTextSizeFromStorage());
+  }, []);
 
   useEffect(() => {
     if (!supabase || !user) {
@@ -289,6 +300,50 @@ export default function AccountPage() {
         </section>
 
         <WorkspaceThemeSelector />
+
+        <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
+          <h2 className="text-lg font-semibold text-white">Accessibility</h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            Increase smaller helper text across the app. Headings and layout stay the same.
+          </p>
+          <fieldset className="mt-4">
+            <legend className="sr-only">Text size</legend>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              {(
+                [
+                  { value: "normal" as const, label: "Normal" },
+                  { value: "large" as const, label: "Large" },
+                  { value: "extra-large" as const, label: "Extra Large" },
+                ] as const
+              ).map(({ value, label }) => {
+                const selected = textSize === value;
+                return (
+                  <label
+                    key={value}
+                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-4 py-2.5 text-sm font-medium touch-manipulation transition sm:min-h-0 sm:py-2 ${
+                      selected
+                        ? "border-sky-400/60 bg-sky-500/15 text-sky-100"
+                        : "border-white/10 bg-black/30 text-zinc-300 hover:border-white/20 hover:text-white"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="arden24-text-size"
+                      value={value}
+                      checked={selected}
+                      onChange={() => {
+                        setTextSize(value);
+                        persistTextSizePreference(value);
+                      }}
+                      className="sr-only"
+                    />
+                    {label}
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        </section>
 
         <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-6">
           <h2 className="text-lg font-semibold text-white">Login &amp; security</h2>

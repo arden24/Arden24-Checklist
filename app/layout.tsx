@@ -6,6 +6,7 @@ import AppFooterDisclaimer from "@/components/AppFooterDisclaimer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppToastProvider } from "@/contexts/AppToastContext";
 import { WorkspaceThemeProvider } from "@/components/workspace/WorkspaceThemeProvider";
+import TextSizeHydration from "@/components/TextSizeHydration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,6 +40,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} h-full min-h-screen w-full max-w-full antialiased`}
       >
+        <TextSizeHydration />
         <div className="flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden bg-background text-foreground">
           <AuthProvider>
             <WorkspaceThemeProvider>
