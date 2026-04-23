@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  --text-scale: 1;
   --background: #000000;
   --foreground: #d4d4d4;
   --accent: #38bdf8;
@@ -100,4 +101,26 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Accessibility: scale common helper text sizes (Account setting: Text Size). */
+html[data-text-size="large"] {
+  --text-scale: 1.12;
+}
+
+html[data-text-size="extra-large"] {
+  --text-scale: 1.25;
+  line-height: 1.6;
+}
+
+.text-xs {
+  font-size: calc(0.75rem * var(--text-scale));
+}
+
+.text-sm {
+  font-size: calc(0.875rem * var(--text-scale));
+}
+
+.text-base {
+  font-size: calc(1rem * var(--text-scale));
 }
