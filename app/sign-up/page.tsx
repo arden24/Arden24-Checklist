@@ -47,6 +47,12 @@ export default function SignUpPage() {
 
   useEffect(() => {
     if (!draftHydrated || signupCompletedRef.current) return;
+    const hasAnyInput =
+      email.trim().length > 0 || password.length > 0 || agreedToTerms;
+    if (!hasAnyInput) {
+      clearSignupDraft();
+      return;
+    }
     const id = window.setTimeout(() => {
       if (signupCompletedRef.current) return;
       writeSignupDraft({ email, password, agreedToTerms });
