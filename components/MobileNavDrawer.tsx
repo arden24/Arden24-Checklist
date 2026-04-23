@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, startTransition, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import type { User } from "@supabase/supabase-js";
 import type { MainNavItem } from "@/components/main-nav";
+import type { PageHelpKey } from "@/lib/help/page-help-content";
 import { isMainNavItemActive } from "@/components/main-nav";
 import {
   QUICK_ACTIONS_CORE,
@@ -31,6 +32,9 @@ type MobileNavDrawerProps = {
   onSignOut: () => void;
   menuButtonRef: RefObject<HTMLButtonElement | null>;
   onDrawerVisibleChange?: (visible: boolean) => void;
+  /** When set, drawer shows a Help control that opens the same in-app help as the header. */
+  helpPageKey?: PageHelpKey | null;
+  onOpenHelp?: () => void;
 };
 
 export default function MobileNavDrawer({
@@ -44,6 +48,8 @@ export default function MobileNavDrawer({
   onSignOut,
   menuButtonRef,
   onDrawerVisibleChange,
+  helpPageKey,
+  onOpenHelp,
 }: MobileNavDrawerProps) {
   const panelRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -53,7 +59,7 @@ export default function MobileNavDrawer({
   const bodyOverflowRef = useRef<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
+    startTransition(() => setMounted(true));
   }, []);
 
   useEffect(() => {
@@ -62,13 +68,13 @@ export default function MobileNavDrawer({
 
   useEffect(() => {
     if (open) {
-      setVisible(true);
+      startTransition(() => setVisible(true));
       const id = requestAnimationFrame(() => {
         requestAnimationFrame(() => setAnimateIn(true));
       });
       return () => cancelAnimationFrame(id);
     }
-    setAnimateIn(false);
+    startTransition(() => setAnimateIn(false));
     const t = window.setTimeout(() => setVisible(false), MOBILE_DRAWER_TRANSITION_MS);
     return () => window.clearTimeout(t);
   }, [open]);
@@ -273,6 +279,21 @@ export default function MobileNavDrawer({
           {!loading &&
             (user ? (
               <div className="flex flex-col gap-2">
+                {helpPageKey && onOpenHelp ? (
+                  <button
+                    type="button"
+                    onClick={onOpenHelp}
+                    className={`${drawerLinkFocusClass} ${footerBtnClass} flex-row gap-2 border-sky-500/12 text-zinc-300 hover:border-sky-400/35 hover:text-sky-100`}
+                  >
+                    <span
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-sky-500/40 bg-sky-500/10 text-[11px] font-semibold text-sky-300"
+                      aria-hidden
+                    >
+                      ?
+                    </span>
+                    Help
+                  </button>
+                ) : null}
                 <Link href="/account" onClick={onClose} className={footerBtnClass}>
                   Account
                 </Link>

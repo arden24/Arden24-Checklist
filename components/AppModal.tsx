@@ -2,6 +2,9 @@
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export type AppModalProps = {
   open: boolean;
   onClose: () => void;
@@ -12,6 +15,11 @@ export type AppModalProps = {
   panelClassName?: string;
   labelledBy?: string;
   describedBy?: string;
+  /**
+   * Keeps keyboard focus inside the dialog panel (e.g. help content).
+   * Backdrop stays out of the tab order via tabIndex={-1}.
+   */
+  trapFocus?: boolean;
 };
 
 export function AppModal({
@@ -22,6 +30,7 @@ export function AppModal({
   panelClassName = "max-w-md",
   labelledBy,
   describedBy,
+  trapFocus = false,
 }: AppModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const fallbackTitleId = useId();
@@ -39,10 +48,24 @@ export function AppModal({
   }, [open, onClose]);
 
   useEffect(() => {
+    if (!open || !trapFocus) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target;
+      if (t instanceof Node && panel.contains(t)) return;
+      const first = panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      first?.focus();
+    };
+
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, [open, trapFocus]);
+
+  useEffect(() => {
     if (!open) return;
-    const el = panelRef.current?.querySelector<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    );
+    const el = panelRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
     window.setTimeout(() => el?.focus(), 10);
   }, [open]);
 
@@ -56,6 +79,7 @@ export function AppModal({
       <button
         type="button"
         aria-label="Close"
+        tabIndex={-1}
         className="absolute inset-0 bg-black/75 backdrop-blur-[2px]"
         onClick={() => closeOnBackdrop && onClose()}
       />

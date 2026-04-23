@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, startTransition } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchOpenTrades } from "@/lib/supabase/open-trades";
@@ -13,6 +13,9 @@ import MobileNavDrawer from "@/components/MobileNavDrawer";
 import PublicMobileMenu from "@/components/PublicMobileMenu";
 import { getMainNavItems, isMainNavItemActive } from "@/components/main-nav";
 import { ARDEN24_TRADES_UPDATED_EVENT } from "@/lib/trades-updated";
+import { pathnameToPageHelpKey } from "@/lib/help/pathname-to-help-key";
+import { HelpButton } from "@/components/help/HelpButton";
+import { HelpModal } from "@/components/help/HelpModal";
 
 /** Fixed app bar; main padding uses `globals.css` `--app-header-offset`. Drawers sit above (higher z-index). */
 const appHeaderShellClass =
@@ -25,17 +28,26 @@ export default function Navbar() {
   const [liveTradesCount, setLiveTradesCount] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileDrawerOnScreen, setMobileDrawerOnScreen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const supabase = useMemo(() => createClient(), []);
   const navItems = getMainNavItems();
 
+  const helpPageKey = useMemo(() => {
+    if (!user) return null;
+    return pathnameToPageHelpKey(pathname);
+  }, [user, pathname]);
+
   useEffect(() => {
-    setMobileOpen(false);
+    startTransition(() => {
+      setMobileOpen(false);
+      setHelpOpen(false);
+    });
   }, [pathname]);
 
   useEffect(() => {
     if (!user) {
-      setLiveTradesCount(0);
+      startTransition(() => setLiveTradesCount(0));
       return;
     }
     function refreshLiveCount() {
@@ -169,26 +181,38 @@ export default function Navbar() {
           </ul>
         </nav>
 
-        <div className="hidden shrink-0 items-center gap-2 sm:gap-3 md:flex">
+        <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
           {!loading &&
             (user ? (
               <>
-                <Link
-                  href="/account"
-                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
-                >
-                  Account
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-red-400/60 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
-                >
-                  Sign out
-                </button>
+                <div className="hidden items-center gap-2 md:flex">
+                  <Link
+                    href="/account"
+                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-sky-400/60 hover:text-sky-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
+                  >
+                    Account
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-red-400/60 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
+                  >
+                    Sign out
+                  </button>
+                </div>
+                {helpPageKey ? (
+                  <>
+                    <HelpButton variant="header" onClick={() => setHelpOpen(true)} />
+                    <HelpModal
+                      pageKey={helpPageKey}
+                      open={helpOpen}
+                      onClose={() => setHelpOpen(false)}
+                    />
+                  </>
+                ) : null}
               </>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="hidden items-center gap-2 md:flex">
                 <Link
                   href="/sign-in"
                   className="rounded-xl border border-sky-400/60 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:py-1.5"
@@ -217,6 +241,15 @@ export default function Navbar() {
         onSignOut={handleSignOut}
         menuButtonRef={menuButtonRef}
         onDrawerVisibleChange={setMobileDrawerOnScreen}
+        helpPageKey={helpPageKey}
+        onOpenHelp={
+          helpPageKey
+            ? () => {
+                setMobileOpen(false);
+                setHelpOpen(true);
+              }
+            : undefined
+        }
       />
     </header>
   );
