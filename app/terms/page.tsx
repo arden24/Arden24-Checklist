@@ -1,4 +1,4 @@
-import Link from "next/link";
+import LegalDocumentBackButton from "@/components/LegalDocumentBackButton";
 
 export const metadata = {
   title: "Terms of use",
@@ -31,12 +31,7 @@ export default function TermsPage() {
           </p>
         </div>
         <p className="mt-8">
-          <Link
-            href="/"
-            className="text-sm font-medium text-sky-400 hover:text-sky-300"
-          >
-            ← Home
-          </Link>
+          <LegalDocumentBackButton />
         </p>
       </div>
     </div>

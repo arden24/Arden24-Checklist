@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -12,6 +12,11 @@ import AppButton from "@/components/AppButton";
 import { isValidEmail } from "@/lib/auth-validation";
 import { getAuthCallbackRedirectUrl } from "@/lib/auth-redirect-url";
 import { isPasswordRecoverySession } from "@/lib/auth-recovery";
+import {
+  clearSignupDraft,
+  readSignupDraft,
+  writeSignupDraft,
+} from "@/lib/signup-draft-storage";
 
 const NOT_CONFIGURED_MESSAGE =
   "Add the environment variables shown above to .env.local and restart the dev server (npm run dev).";
@@ -27,6 +32,27 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<"signed_in" | "confirm_email" | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const signupCompletedRef = useRef(false);
+
+  useEffect(() => {
+    const draft = readSignupDraft();
+    if (draft) {
+      setEmail(draft.email);
+      setPassword(draft.password);
+      setAgreedToTerms(draft.agreedToTerms);
+    }
+    setDraftHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!draftHydrated || signupCompletedRef.current) return;
+    const id = window.setTimeout(() => {
+      if (signupCompletedRef.current) return;
+      writeSignupDraft({ email, password, agreedToTerms });
+    }, 300);
+    return () => window.clearTimeout(id);
+  }, [email, password, agreedToTerms, draftHydrated]);
 
   // If already logged in: recovery sessions must finish on /reset-password, not /dashboard
   useEffect(() => {
@@ -96,12 +122,16 @@ export default function SignUpPage() {
           setLoading(false);
           return;
         }
+        signupCompletedRef.current = true;
+        clearSignupDraft();
         setLoading(false);
         setSuccess("signed_in");
         router.push("/dashboard");
         router.refresh();
         return;
       }
+      signupCompletedRef.current = true;
+      clearSignupDraft();
       setSuccess("confirm_email");
       setLoading(false);
       router.refresh();

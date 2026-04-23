@@ -1,4 +1,4 @@
-import Link from "next/link";
+import LegalDocumentBackButton from "@/components/LegalDocumentBackButton";
 
 export const metadata = {
   title: "Privacy policy",
@@ -28,12 +28,7 @@ export default function PrivacyPage() {
           </p>
         </div>
         <p className="mt-8">
-          <Link
-            href="/"
-            className="text-sm font-medium text-sky-400 hover:text-sky-300"
-          >
-            ← Home
-          </Link>
+          <LegalDocumentBackButton />
         </p>
       </div>
     </div>
