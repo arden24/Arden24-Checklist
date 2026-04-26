@@ -8,6 +8,7 @@ import {
   ARDEN24_LOT_SIZE_DRAFT_KEY,
   LEGACY_LOT_SIZE_DRAFT_KEYS,
 } from "@/lib/session-draft-keys";
+import { ARDEN24_DEMO_LOT_SIZE_DRAFT_KEY } from "@/lib/demo/demo-storage-keys";
 
 const pipValues: Record<string, number> = {
   EURUSD: 10,
@@ -75,13 +76,16 @@ type LotSizeCalculatorProps = {
    * trade form’s outer shell (`mt-8 rounded-xl bg-zinc-900 …`) so grey panels align.
    */
   embedded?: boolean;
+  /** `demo` uses isolated sessionStorage keys under `/demo`. Default matches the live app. */
+  variant?: "live" | "demo";
 };
 
-export default function LotSizeCalculator({ embedded = false }: LotSizeCalculatorProps) {
+export default function LotSizeCalculator({ embedded = false, variant = "live" }: LotSizeCalculatorProps) {
+  const isDemo = variant === "demo";
   const [calc, setCalc, resetCalc] = useArden24SessionDraft<LotCalcSessionState>(
-    ARDEN24_LOT_SIZE_DRAFT_KEY,
+    isDemo ? ARDEN24_DEMO_LOT_SIZE_DRAFT_KEY : ARDEN24_LOT_SIZE_DRAFT_KEY,
     LOT_CALC_INITIAL,
-    LEGACY_LOT_SIZE_DRAFT_KEYS
+    isDemo ? [] : LEGACY_LOT_SIZE_DRAFT_KEYS
   );
 
   const {
