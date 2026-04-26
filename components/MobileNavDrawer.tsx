@@ -128,7 +128,7 @@ export default function MobileNavDrawer({
     }`;
 
   function quickTileClass(active: boolean, primary?: boolean) {
-    const base = `${drawerLinkFocusClass} flex min-h-[3.25rem] w-full min-w-0 touch-manipulation items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors duration-150 ease-out motion-reduce:transition-none`;
+    const base = `${drawerLinkFocusClass} flex min-h-11 w-full min-w-0 touch-manipulation items-center gap-2 rounded-xl border px-3 py-2.5 transition-colors duration-150 ease-out motion-reduce:transition-none`;
     if (active) {
       return `${base} border-sky-400/35 bg-sky-500/[0.12] text-sky-50`;
     }
@@ -171,45 +171,46 @@ export default function MobileNavDrawer({
           paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))",
         }}
       >
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.055] px-4 pb-3 pt-1.5">
-            <Link
-              id="arden-mobile-drawer-title"
-              href="/dashboard"
-              onClick={onClose}
-              className={`${drawerLinkFocusClass} min-h-11 min-w-0 truncate pr-2 text-base font-semibold tracking-tight text-white drop-shadow-[0_0_14px_rgba(56,189,248,0.08)]`}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.055] px-4 pb-2.5 pt-1.5">
+          <Link
+            id="arden-mobile-drawer-title"
+            href="/dashboard"
+            onClick={onClose}
+            className={`${drawerLinkFocusClass} min-h-11 min-w-0 truncate pr-2 text-base font-semibold tracking-tight text-white drop-shadow-[0_0_14px_rgba(56,189,248,0.08)]`}
+          >
+            Arden24
+          </Link>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            className={`${drawerLinkFocusClass} flex h-11 w-11 shrink-0 items-center justify-center self-center rounded-xl border border-white/[0.09] bg-zinc-900/65 text-zinc-400 touch-manipulation shadow-[inset_0_1px_0_0_rgba(255,255,255,0.035)] transition-colors duration-150 ease-out active:border-sky-400/35 active:bg-sky-500/[0.12] active:text-sky-100`}
+            aria-label="Close navigation menu"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden
             >
-              Arden24
-            </Link>
-            <button
-              ref={closeButtonRef}
-              type="button"
-              onClick={onClose}
-              className={`${drawerLinkFocusClass} flex h-11 w-11 shrink-0 items-center justify-center self-center rounded-xl border border-white/[0.09] bg-zinc-900/65 text-zinc-400 touch-manipulation shadow-[inset_0_1px_0_0_rgba(255,255,255,0.035)] transition-colors duration-150 ease-out active:border-sky-400/35 active:bg-sky-500/[0.12] active:text-sky-100`}
-              aria-label="Close navigation menu"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden
-              >
-                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
+              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
 
+        {/* Single scroll region: quick actions + primary nav share space; header/footer stay fixed */}
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
           {showQuickActions ? (
-            <div className="shrink-0 border-b border-white/[0.06] px-4 py-3">
+            <div className="shrink-0 border-b border-white/[0.06] px-4 py-2">
               <p
                 id="arden-mobile-quick-actions-label"
-                className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
+                className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
               >
                 Quick actions
               </p>
-              <ul className="grid min-w-0 grid-cols-1 gap-2" aria-labelledby="arden-mobile-quick-actions-label">
+              <ul className="grid min-w-0 grid-cols-1 gap-1.5" aria-labelledby="arden-mobile-quick-actions-label">
                 {QUICK_ACTIONS_CORE.map((action) => {
                   const active = isQuickActionActive(pathname, action.href, windowHash);
                   const label = action.labelCompact ?? action.label;
@@ -224,13 +225,13 @@ export default function MobileNavDrawer({
                         <span
                           className={
                             action.primary
-                              ? "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-black/25"
-                              : "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/[0.08]"
+                              ? "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/15 bg-black/25 [&>svg]:h-4 [&>svg]:w-4"
+                              : "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-sky-500/20 bg-sky-500/[0.08] [&>svg]:h-4 [&>svg]:w-4"
                           }
                         >
                           {action.icon}
                         </span>
-                        <span className="min-w-0 flex-1 text-[0.9375rem] font-semibold leading-snug tracking-tight">
+                        <span className="min-w-0 flex-1 text-[0.875rem] font-semibold leading-snug tracking-tight">
                           {label}
                         </span>
                       </Link>
@@ -241,10 +242,7 @@ export default function MobileNavDrawer({
             </div>
           ) : null}
 
-          <nav
-            className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain px-4 py-3 [-webkit-overflow-scrolling:touch]"
-            aria-label="Primary navigation"
-          >
+          <nav className="min-w-0 px-4 py-3" aria-label="Primary navigation">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Menu</p>
             <ul className="flex flex-col gap-2">
               {navItems.map((item) => {
@@ -275,7 +273,7 @@ export default function MobileNavDrawer({
           </nav>
         </div>
 
-        <div className="shrink-0 border-t border-sky-500/[0.08] bg-black/22 px-4 pb-2.5 pt-3.5 backdrop-blur-[6px]">
+        <div className="shrink-0 border-t border-sky-500/[0.08] bg-black/22 px-4 pb-2.5 pt-3 backdrop-blur-[6px]">
           {!loading &&
             (user ? (
               <div className="flex flex-col gap-2">
