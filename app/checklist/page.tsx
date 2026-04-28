@@ -74,8 +74,9 @@ function writeChecklistDraftToSession(activeId: string, checked: boolean[]) {
 
 export default function ChecklistPage() {
   const { user } = useAuth();
+  const userId = user?.id;
   const supabase = useMemo(() => createClient(), []);
-  const strategiesKey = getStrategiesKey(user?.id);
+  const strategiesKey = getStrategiesKey(userId);
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [checked, setChecked] = useState<boolean[]>([]);
@@ -91,7 +92,7 @@ export default function ChecklistPage() {
   } | null>(null);
 
   const load = useCallback(() => {
-    if (supabase && user) {
+    if (supabase && userId) {
       fetchStrategies(supabase)
         .then((list) => {
           setStrategies(list);
@@ -118,7 +119,7 @@ export default function ChecklistPage() {
         // ignore
       }
     }
-  }, [supabase, user, strategiesKey]);
+  }, [supabase, userId, strategiesKey]);
 
   useEffect(() => {
     load();
@@ -151,8 +152,8 @@ export default function ChecklistPage() {
       return false;
     };
 
-    if (supabase && user?.id) {
-      fetchUserDraft(supabase, user.id, "checklist:draft")
+    if (supabase && userId) {
+      fetchUserDraft(supabase, userId, "checklist:draft")
         .then((row) => {
           const serverPayload = row?.payload as any;
           const serverDraft: ChecklistDraft | null =
@@ -205,7 +206,7 @@ export default function ChecklistPage() {
     setActiveId(first.id);
     setChecked(new Array((first.checklist ?? []).length).fill(false));
     draftHydratedRef.current = true;
-  }, [strategies, supabase, user?.id]);
+  }, [strategies, supabase, userId]);
 
   /** Persist checklist draft (session tab only). */
   useEffect(() => {
@@ -217,15 +218,15 @@ export default function ChecklistPage() {
     if (!draftHydratedRef.current) return;
     writeChecklistDraftToSession(activeId, checked);
 
-    if (supabase && user?.id) {
+    if (supabase && userId) {
       if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
       persistTimerRef.current = window.setTimeout(() => {
-        upsertUserDraft(supabase, user.id, "checklist:draft", { activeId, checked }).catch(
+        upsertUserDraft(supabase, userId, "checklist:draft", { activeId, checked }).catch(
           logError
         );
       }, 500);
     }
-  }, [activeId, checked, strategies.length]);
+  }, [activeId, checked, strategies.length, supabase, userId]);
 
   const activeStrategy = useMemo(
     () => strategies.find((s) => s.id === activeId) ?? null,
@@ -331,8 +332,8 @@ export default function ChecklistPage() {
     } catch {
       // ignore
     }
-    if (supabase && user?.id) {
-      deleteUserDraft(supabase, user.id, "checklist:draft").catch(logError);
+    if (supabase && userId) {
+      deleteUserDraft(supabase, userId, "checklist:draft").catch(logError);
     }
   }
 
@@ -501,7 +502,7 @@ export default function ChecklistPage() {
                         stepNumber={index + 1}
                         item={item}
                         checked={checked[index] ?? false}
-                        imageLoading={index < 2 ? "eager" : "lazy"}
+                        imageLoading="lazy"
                         onToggle={toggleItem}
                         onOpenLightbox={openScreenshotLightbox}
                       />

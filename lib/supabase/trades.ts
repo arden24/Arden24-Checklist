@@ -78,11 +78,20 @@ function rowToTrade(row: TradeRow): Trade {
   };
 }
 
-export async function fetchTrades(supabase: SupabaseClient): Promise<Trade[]> {
-  const { data, error } = await supabase
+export async function fetchTrades(
+  supabase: SupabaseClient,
+  limit?: number
+): Promise<Trade[]> {
+  let query = supabase
     .from("trades")
-    .select("*")
+    .select(
+      "id,user_id,date,pair,market,session,direction,pnl,rr,description,notes,thoughts,confidence,strategy,created_at,result,currency,time,screenshot,opening_screenshot,closing_screenshot,rating"
+    )
     .order("created_at", { ascending: false });
+  if (typeof limit === "number" && Number.isFinite(limit) && limit > 0) {
+    query = query.limit(Math.floor(limit));
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map((row) => rowToTrade(row as TradeRow));
 }

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchTrades } from "@/lib/supabase/trades";
-import { fetchOpenTrades } from "@/lib/supabase/open-trades";
+import { fetchOpenTradesCount } from "@/lib/supabase/open-trades";
 import {
   cancelClosedTrade,
   getTradesForJournal,
@@ -37,12 +37,12 @@ import { canonicalRealisedPnl, tradeOutcomeKind } from "@/lib/realised-pnl";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useAppToast } from "@/contexts/AppToastContext";
 import FeatureLockCard from "@/components/subscriptions/FeatureLockCard";
-import { useActivePlan } from "@/lib/subscriptions/use-active-plan";
 import {
   canUseProAdvancedStats,
   canUseProGoalsAndAccount,
   canUseProJournalCalendar,
 } from "@/lib/subscriptions/tier-gates";
+import { useWorkspaceTheme } from "@/components/workspace/WorkspaceThemeProvider";
 
 function dateKey(d: Date): string {
   const y = d.getFullYear();
@@ -116,8 +116,9 @@ function computeStats(closedTrades: Trade[], openTradesCount: number) {
 
 export default function JournalPage() {
   const { user } = useAuth();
+  const userId = user?.id;
   const { pushToast } = useAppToast();
-  const { plan: subscriptionPlan, loading: planLoading } = useActivePlan();
+  const { plan: subscriptionPlan, planLoading } = useWorkspaceTheme();
   const supabase = useMemo(() => createClient(), []);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [openTradesCount, setOpenTradesCount] = useState(0);
@@ -127,16 +128,14 @@ export default function JournalPage() {
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
   const load = useCallback(() => {
-    if (supabase && user) {
-      fetchTrades(supabase).then(setTrades).catch(logError);
-      fetchOpenTrades(supabase)
-        .then((list) => setOpenTradesCount(list.length))
-        .catch(logError);
+    if (supabase && userId) {
+      fetchTrades(supabase, 500).then(setTrades).catch(logError);
+      fetchOpenTradesCount(supabase).then(setOpenTradesCount).catch(logError);
     } else {
-      setTrades(getTradesForJournal(user?.id));
-      setOpenTradesCount(loadOpenTrades(user?.id).length);
+      setTrades(getTradesForJournal(userId));
+      setOpenTradesCount(loadOpenTrades(userId).length);
     }
-  }, [supabase, user]);
+  }, [supabase, userId]);
 
   useEffect(() => {
     load();
@@ -158,7 +157,7 @@ export default function JournalPage() {
     if (!trade?.id) return;
     setCancelSubmitting(true);
     try {
-      await cancelClosedTrade(trade.id, user?.id, supabase);
+      await cancelClosedTrade(trade.id, userId, supabase);
       setTrades((prev) => prev.filter((t) => t.id !== trade.id));
       dispatchTradesUpdated();
       pushToast("Trade removed from your journal.", "success");
@@ -169,7 +168,7 @@ export default function JournalPage() {
       setCancelSubmitting(false);
       setTradePendingCancel(null);
     }
-  }, [tradePendingCancel, supabase, user?.id, pushToast]);
+  }, [tradePendingCancel, supabase, userId, pushToast]);
 
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();

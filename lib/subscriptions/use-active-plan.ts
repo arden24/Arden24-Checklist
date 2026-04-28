@@ -1,51 +1,85 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { getActivePlanFromSubscriptionRow } from "@/lib/subscriptions/access";
 import type { PlanKey } from "@/lib/subscriptions/plans";
 
-export function useActivePlan(): {
+type ActivePlanValue = {
   plan: PlanKey | null;
   loading: boolean;
-} {
+};
+
+const ActivePlanContext = createContext<ActivePlanValue | null>(null);
+
+export function ActivePlanProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const userId = user?.id;
   const supabase = useMemo(() => createClient(), []);
   const [plan, setPlan] = useState<PlanKey | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!supabase || !user) {
-      setPlan(null);
-      setLoading(false);
-      return;
+    let cancelled = false;
+    const commit = (nextPlan: PlanKey | null, nextLoading: boolean) => {
+      if (cancelled) return;
+      setPlan(nextPlan);
+      setLoading(nextLoading);
+    };
+
+    if (!supabase || !userId) {
+      queueMicrotask(() => commit(null, false));
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
-    setLoading(true);
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setLoading(true);
+    });
 
     void (async () => {
       const { data, error } = await supabase
         .from("subscriptions")
         .select("subscription_status, subscription_plan, price_id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (cancelled) return;
       if (error) {
-        setPlan(null);
-        setLoading(false);
+        commit(null, false);
         return;
       }
-      setPlan(getActivePlanFromSubscriptionRow(data));
-      setLoading(false);
+      commit(getActivePlanFromSubscriptionRow(data), false);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [supabase, user]);
+  }, [supabase, userId]);
 
-  return { plan, loading };
+  const value = useMemo<ActivePlanValue>(
+    () => ({ plan, loading }),
+    [plan, loading]
+  );
+
+  return createElement(ActivePlanContext.Provider, { value }, children);
+}
+
+export function useActivePlan(): ActivePlanValue {
+  const ctx = useContext(ActivePlanContext);
+  if (!ctx) {
+    throw new Error("useActivePlan must be used within ActivePlanProvider");
+  }
+  return ctx;
 }

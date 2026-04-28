@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, startTransition } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
-import { fetchOpenTrades } from "@/lib/supabase/open-trades";
+import { fetchOpenTradesCount } from "@/lib/supabase/open-trades";
 import { loadOpenTrades } from "@/lib/journal";
 import QuickAccess from "@/components/QuickAccess";
 import BackButton from "@/components/BackButton";
@@ -20,6 +20,8 @@ import { HelpModal } from "@/components/help/HelpModal";
 /** Fixed app bar; main padding uses `globals.css` `--app-header-offset`. Drawers sit above (higher z-index). */
 const appHeaderShellClass =
   "fixed inset-x-0 top-0 z-50 w-full border-b border-[var(--workspace-card-border)] bg-[var(--workspace-header)] pt-[env(safe-area-inset-top,0px)] backdrop-blur-md shadow-[0_12px_40px_rgba(15,23,42,0.9)]";
+
+const openTradesCountCache = new Map<string, number>();
 
 export default function Navbar() {
   const router = useRouter();
@@ -50,22 +52,39 @@ export default function Navbar() {
       startTransition(() => setLiveTradesCount(0));
       return;
     }
+    const userId = user.id;
+    const cached = openTradesCountCache.get(userId);
+    if (typeof cached === "number") {
+      setLiveTradesCount(cached);
+    }
+
     function refreshLiveCount() {
       if (supabase) {
-        fetchOpenTrades(supabase)
-          .then((list) => setLiveTradesCount(list.length))
-          .catch(() => setLiveTradesCount(0));
+        fetchOpenTradesCount(supabase)
+          .then((count) => {
+            openTradesCountCache.set(userId, count);
+            setLiveTradesCount(count);
+          })
+          .catch(() => {
+            openTradesCountCache.set(userId, 0);
+            setLiveTradesCount(0);
+          });
       } else {
-        setLiveTradesCount(loadOpenTrades(user?.id).length);
+        const count = loadOpenTrades(userId).length;
+        openTradesCountCache.set(userId, count);
+        setLiveTradesCount(count);
       }
     }
-    refreshLiveCount();
+
+    const timer = window.setTimeout(refreshLiveCount, 0);
     window.addEventListener(ARDEN24_TRADES_UPDATED_EVENT, refreshLiveCount);
-    return () =>
+    return () => {
+      window.clearTimeout(timer);
       window.removeEventListener(
         ARDEN24_TRADES_UPDATED_EVENT,
         refreshLiveCount,
       );
+    };
   }, [user, supabase]);
 
   const isLandingLoggedOut = pathname === "/" && !loading && !user;

@@ -29,8 +29,8 @@ import { TextConfirmDialog } from "@/components/TextConfirmDialog";
 import { useAppToast } from "@/contexts/AppToastContext";
 import FeatureLockCard from "@/components/subscriptions/FeatureLockCard";
 import { hasPlanAccess } from "@/lib/subscriptions/access";
-import { useActivePlan } from "@/lib/subscriptions/use-active-plan";
 import { canUseProAdvancedStats } from "@/lib/subscriptions/tier-gates";
+import { useWorkspaceTheme } from "@/components/workspace/WorkspaceThemeProvider";
 
 type ResetWizardStep = "idle" | "step1" | "step2" | "step3";
 
@@ -100,6 +100,7 @@ function computeStats(closedTrades: Trade[], openTradesCount: number) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const userId = user?.id;
   const { pushToast } = useAppToast();
   const supabase = useMemo(() => createClient(), []);
   const [closedTrades, setClosedTrades] = useState<Trade[]>([]);
@@ -109,17 +110,17 @@ export default function DashboardPage() {
   const tradesLoadSeq = useRef(0);
   const [isResetting, setIsResetting] = useState(false);
   const [resetWizard, setResetWizard] = useState<ResetWizardStep>("idle");
-  const { plan: userPlan, loading: planLoaded } = useActivePlan();
+  const { plan: userPlan, planLoading: planLoaded } = useWorkspaceTheme();
 
   const loadTradesData = useCallback(async () => {
     const seq = ++tradesLoadSeq.current;
     const applyIfCurrent = () => seq === tradesLoadSeq.current;
 
-    if (supabase && user) {
+    if (supabase && userId) {
       try {
         const [closed, open] = await Promise.all([
-          fetchTrades(supabase),
-          fetchOpenTrades(supabase),
+          fetchTrades(supabase, 200),
+          fetchOpenTrades(supabase, 200),
         ]);
         if (!applyIfCurrent()) return;
         setClosedTrades(closed);
@@ -135,14 +136,14 @@ export default function DashboardPage() {
         if (applyIfCurrent()) setTradesReady(true);
       }
     } else {
-      const open = loadOpenTrades(user?.id);
+      const open = loadOpenTrades(userId);
       if (!applyIfCurrent()) return;
-      setClosedTrades(loadTrades(user?.id) as Trade[]);
+      setClosedTrades(loadTrades(userId) as Trade[]);
       setOpenTradesList(open);
       setOpenTradesCount(open.length);
       setTradesReady(true);
     }
-  }, [supabase, user]);
+  }, [supabase, userId]);
 
   useEffect(() => {
     void loadTradesData();
@@ -151,11 +152,11 @@ export default function DashboardPage() {
   const prevUserIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const prev = prevUserIdRef.current;
-    prevUserIdRef.current = user?.id;
-    if (prev !== undefined && prev !== user?.id) {
+    prevUserIdRef.current = userId;
+    if (prev !== undefined && prev !== userId) {
       setTradesReady(false);
     }
-  }, [user?.id]);
+  }, [userId]);
 
   useEffect(() => {
     const onUpdated = () => {
@@ -170,20 +171,20 @@ export default function DashboardPage() {
   async function executeResetAllDataConfirmed() {
     setIsResetting(true);
     try {
-      if (supabase && user) {
+      if (supabase && userId) {
         await supabase.from("strategies").delete().neq("id", "00000000-0000-0000-0000-000000000000");
         await supabase.from("trades").delete().neq("id", "00000000-0000-0000-0000-000000000000");
         await supabase.from("open_trades").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       }
       if (typeof window !== "undefined") {
         const keys = [
-          getStrategiesKey(user?.id),
+          getStrategiesKey(userId),
           getStrategiesKey(null),
-          getTradesKey(user?.id),
+          getTradesKey(userId),
           getTradesKey(null),
-          getOpenTradesKey(user?.id),
+          getOpenTradesKey(userId),
           getOpenTradesKey(null),
-          getBestStrategyImageKey(user?.id),
+          getBestStrategyImageKey(userId),
           getBestStrategyImageKey(null),
         ];
         keys.forEach((key) => window.localStorage.removeItem(key));

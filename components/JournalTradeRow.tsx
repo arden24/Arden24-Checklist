@@ -113,6 +113,7 @@ export default function JournalTradeRow({
                 <img
                   src={trade.openingScreenshot}
                   alt="Before / Open trade screenshot"
+                  loading="lazy"
                   className="max-h-full max-w-full object-contain"
                 />
               </div>
@@ -135,6 +136,7 @@ export default function JournalTradeRow({
                 <img
                   src={trade.closingScreenshot ?? trade.screenshot}
                   alt="After / Close trade screenshot"
+                  loading="lazy"
                   className="max-h-full max-w-full object-contain"
                 />
               </div>

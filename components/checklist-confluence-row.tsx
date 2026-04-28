@@ -66,7 +66,6 @@ function ChecklistConfluenceRowInner({
                 loading={imageLoading}
                 decoding="async"
                 sizes={confluenceScreenshotSizesAttr}
-                fetchPriority={imageLoading === "eager" ? "high" : undefined}
               />
             </button>
           ) : (

@@ -57,17 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     void (async () => {
       try {
-        const { data: userData, error: userError } =
-          await supabase.auth.getUser();
-        if (userError || !userData.user) {
-          setSession(null);
-          setUser(null);
-        } else {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const s = sessionData.session;
-          setSession(s);
-          setUser(s?.user ?? userData.user);
-        }
+        const { data: sessionData } = await supabase.auth.getSession();
+        const s = sessionData.session;
+        setSession(s);
+        setUser(s?.user ?? null);
       } catch {
         setSession(null);
         setUser(null);

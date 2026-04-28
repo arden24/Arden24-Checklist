@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AppToastProvider } from "@/contexts/AppToastContext";
 import { WorkspaceThemeProvider } from "@/components/workspace/WorkspaceThemeProvider";
 import TextSizeHydration from "@/components/TextSizeHydration";
+import { ActivePlanProvider } from "@/lib/subscriptions/use-active-plan";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,15 +44,17 @@ export default function RootLayout({
         <TextSizeHydration />
         <div className="flex min-h-screen w-full max-w-full min-w-0 flex-col overflow-x-hidden bg-background text-foreground">
           <AuthProvider>
-            <WorkspaceThemeProvider>
-              <AppToastProvider>
-                <AppHeader />
-                <div className="min-w-0 w-full max-w-full flex-1 overflow-x-hidden bg-background pb-[env(safe-area-inset-bottom,0px)] pt-[var(--app-header-offset)]">
-                  {children}
-                </div>
-                <AppFooterDisclaimer />
-              </AppToastProvider>
-            </WorkspaceThemeProvider>
+            <ActivePlanProvider>
+              <WorkspaceThemeProvider>
+                <AppToastProvider>
+                  <AppHeader />
+                  <div className="min-w-0 w-full max-w-full flex-1 overflow-x-hidden bg-background pb-[env(safe-area-inset-bottom,0px)] pt-[var(--app-header-offset)]">
+                    {children}
+                  </div>
+                  <AppFooterDisclaimer />
+                </AppToastProvider>
+              </WorkspaceThemeProvider>
+            </ActivePlanProvider>
           </AuthProvider>
         </div>
       </body>

@@ -40,6 +40,16 @@ type StrategyRow = {
   created_at: string;
 };
 
+type StrategyListRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  market: string | null;
+  timeframes: string | null;
+  created_at: string;
+};
+
 function rowToStrategy(row: StrategyRow): Strategy {
   const checklist = normaliseChecklist(row.checklist);
   return {
@@ -49,6 +59,17 @@ function rowToStrategy(row: StrategyRow): Strategy {
     market: row.market ?? "",
     timeframes: row.timeframes ?? "",
     checklist,
+    createdAt: row.created_at,
+  };
+}
+
+function rowToStrategyList(row: StrategyListRow): Omit<Strategy, "checklist"> & { checklist?: ChecklistItem[] } {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? "",
+    market: row.market ?? "",
+    timeframes: row.timeframes ?? "",
     createdAt: row.created_at,
   };
 }
@@ -174,6 +195,18 @@ export async function fetchStrategies(
   } catch {
     return base;
   }
+}
+
+/** Metadata-only list query for lightweight listing views. */
+export async function fetchStrategiesList(
+  supabase: SupabaseClient
+): Promise<Array<Omit<Strategy, "checklist"> & { checklist?: ChecklistItem[] }>> {
+  const { data, error } = await supabase
+    .from("strategies")
+    .select("id,user_id,name,description,market,timeframes,created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => rowToStrategyList(row as StrategyListRow));
 }
 
 export async function fetchStrategyById(

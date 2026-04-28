@@ -55,14 +55,31 @@ function rowToOpenTrade(row: OpenTradeRow): OpenTrade {
 }
 
 export async function fetchOpenTrades(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  limit?: number
 ): Promise<OpenTrade[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("open_trades")
-    .select("*")
+    .select(
+      "id,user_id,pair,market,direction,entry_price,stop_loss,take_profit,lot_size,notes,date,created_at,opening_screenshot"
+    )
     .order("created_at", { ascending: false });
+  if (typeof limit === "number" && Number.isFinite(limit) && limit > 0) {
+    query = query.limit(Math.floor(limit));
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map((row) => rowToOpenTrade(row as OpenTradeRow));
+}
+
+export async function fetchOpenTradesCount(
+  supabase: SupabaseClient
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("open_trades")
+    .select("id", { count: "exact", head: true });
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export async function insertOpenTrade(

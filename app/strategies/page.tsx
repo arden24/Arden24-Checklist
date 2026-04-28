@@ -15,25 +15,26 @@ import {
   deleteStrategy as deleteStrategyApi,
   type Strategy,
 } from "@/lib/supabase/strategies";
-import { useActivePlan } from "@/lib/subscriptions/use-active-plan";
 import { BASIC_MAX_STRATEGIES, isBasicTier } from "@/lib/subscriptions/tier-gates";
 import FeatureLockCard from "@/components/subscriptions/FeatureLockCard";
+import { useWorkspaceTheme } from "@/components/workspace/WorkspaceThemeProvider";
 
 export default function StrategiesPage() {
   const { user } = useAuth();
+  const userId = user?.id;
   const { pushToast } = useAppToast();
   const supabase = useMemo(() => createClient(), []);
-  const { plan: subscriptionPlan, loading: planLoading } = useActivePlan();
+  const { plan: subscriptionPlan, planLoading } = useWorkspaceTheme();
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
-  const strategiesKey = getStrategiesKey(user?.id);
+  const strategiesKey = getStrategiesKey(userId);
 
   const load = useCallback(() => {
     setLoading(true);
 
-    if (supabase && user) {
+    if (supabase && userId) {
       fetchStrategies(supabase)
         .then(setStrategies)
         .catch((err) => {
@@ -63,7 +64,7 @@ export default function StrategiesPage() {
       setStrategies([]);
       setLoading(false);
     }
-  }, [supabase, user, strategiesKey]);
+  }, [supabase, userId, strategiesKey]);
 
   useEffect(() => {
     load();
@@ -83,7 +84,7 @@ export default function StrategiesPage() {
     const id = deleteTargetId;
     setDeleteSubmitting(true);
     try {
-      if (supabase && user) {
+      if (supabase && userId) {
         try {
           await deleteStrategyApi(supabase, id);
           setStrategies((prev) => prev.filter((s) => s.id !== id));
