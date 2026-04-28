@@ -2,22 +2,12 @@
 
 import { useMemo } from "react";
 import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
-import { calculateLotSize, calculateRiskAmount } from "@/lib/lot-size";
+import { calculateLotSizeFromRiskAmount, calculateRiskAmount, parseLotSizeSymbol } from "@/lib/lot-size";
 import { useArden24SessionDraft } from "@/lib/hooks/useArden24SessionDraft";
 import {
   ARDEN24_LOT_SIZE_DRAFT_KEY,
   LEGACY_LOT_SIZE_DRAFT_KEYS,
 } from "@/lib/session-draft-keys";
-
-const pipValues: Record<string, number> = {
-  EURUSD: 10,
-  GBPUSD: 10,
-  XAUUSD: 10,
-  USDJPY: 9.13,
-  GBPJPY: 9.13,
-  NAS100: 1,
-  US30: 1,
-};
 
 const CURRENCIES = [
   { value: "GBP", symbol: "£", label: "GBP" },
@@ -56,6 +46,7 @@ type LotCalcSessionState = {
   riskAmountInput: number;
   asset: string;
   stopLossPips: number;
+  quoteToAccountRate: number;
 };
 
 const LOT_CALC_INITIAL: LotCalcSessionState = {
@@ -67,6 +58,7 @@ const LOT_CALC_INITIAL: LotCalcSessionState = {
   riskAmountInput: 100,
   asset: "EURUSD",
   stopLossPips: 20,
+  quoteToAccountRate: 1,
 };
 
 type LotSizeCalculatorProps = {
@@ -93,13 +85,20 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
     riskAmountInput,
     asset,
     stopLossPips,
+    quoteToAccountRate,
   } = calc;
 
-  const pipValuePerStandardLot = pipValues[asset] ?? 10;
   const currency = CURRENCIES.find((c) => c.value === accountCurrency) ?? CURRENCIES[0];
 
   const assetOptions: AppSelectOption<string>[] = useMemo(
-    () => Object.keys(pipValues).map((pair) => ({ value: pair, label: pair })),
+    () => [
+      { value: "EURUSD", label: "EURUSD" },
+      { value: "GBPUSD", label: "GBPUSD" },
+      { value: "GBPJPY", label: "GBPJPY" },
+      { value: "USDJPY", label: "USDJPY" },
+      { value: "EURJPY", label: "EURJPY" },
+      { value: "XAUUSD", label: "XAUUSD" },
+    ],
     [],
   );
 
@@ -115,16 +114,29 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
     [riskAmount, accountSize]
   );
 
-  const lotSize = useMemo(
-    () =>
-      calculateLotSize({
-        accountSize,
-        riskPercent: effectiveRiskPercent,
-        stopLossPips,
-        pipValuePerStandardLot,
-      }),
-    [accountSize, effectiveRiskPercent, stopLossPips, pipValuePerStandardLot]
-  );
+  const symbolInfo = useMemo(() => parseLotSizeSymbol(asset), [asset]);
+  const quoteCurrency = symbolInfo.kind === "unknown" ? null : symbolInfo.quote;
+  const needsFx = quoteCurrency != null && quoteCurrency !== accountCurrency;
+
+  const calcResult = useMemo(() => {
+    return calculateLotSizeFromRiskAmount({
+      symbol: asset,
+      accountCurrency,
+      riskAmount,
+      stopLossPips,
+      quoteToAccountRate,
+    });
+  }, [asset, accountCurrency, riskAmount, stopLossPips, quoteToAccountRate]);
+
+  const estimatedActualRisk = calcResult.ok
+    ? calcResult.estimatedActualRisk
+    : calcResult.estimatedActualRisk ?? null;
+
+  const variancePct = calcResult.ok
+    ? calcResult.varianceRatio * 100
+    : calcResult.varianceRatio != null
+      ? calcResult.varianceRatio * 100
+      : null;
 
   function handleReset() {
     resetCalc();
@@ -158,6 +170,13 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
       {!embedded ? (
         <h2 className="mb-4 text-2xl font-semibold text-white">Lot Size Calculator</h2>
       ) : null}
+
+      <div className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/95">
+        <p className="font-semibold">Risk calculator under audit.</p>
+        <p className="mt-1 text-xs text-amber-100/90">
+          Always confirm lot size with your broker before placing a trade.
+        </p>
+      </div>
 
       <div className="mb-4">
         <AppSelect
@@ -237,6 +256,24 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
             className={inputClass}
           />
         </label>
+
+        {needsFx ? (
+          <label className="flex flex-col gap-2 md:col-span-2">
+            <span className={labelClass}>
+              FX rate ({quoteCurrency} → {accountCurrency})
+            </span>
+            <input
+              type="number"
+              step="0.0001"
+              value={quoteToAccountRate}
+              onChange={(e) => setCalc((c) => ({ ...c, quoteToAccountRate: Number(e.target.value) }))}
+              className={inputClass}
+            />
+            <p className="text-xs text-zinc-500">
+              Required to convert pip/point value into your account currency.
+            </p>
+          </label>
+        ) : null}
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -252,8 +289,47 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
 
         <div className="rounded-xl bg-zinc-800 p-4">
           <p className="text-sm text-zinc-400">Suggested lot size</p>
-          <p className="text-2xl font-bold text-sky-400">{lotSize}</p>
+          <p className="text-2xl font-bold text-sky-400">
+            {calcResult.ok ? calcResult.lotSize : "—"}
+          </p>
+          {!calcResult.ok ? (
+            <p className="mt-2 text-xs font-medium text-red-300/95">
+              {calcResult.reason}
+            </p>
+          ) : null}
         </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-4 text-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Calculated risk check</p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <div>
+            <p className="text-xs text-zinc-500">Intended risk</p>
+            <p className="mt-1 font-semibold text-white">
+              {currency.symbol}
+              {riskAmount.toFixed(2)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-zinc-500">Estimated actual risk</p>
+            <p className="mt-1 font-semibold text-white">
+              {estimatedActualRisk != null ? `${currency.symbol}${estimatedActualRisk.toFixed(2)}` : "—"}
+            </p>
+          </div>
+        </div>
+
+        {variancePct != null ? (
+          <p className={`mt-2 text-xs font-medium ${variancePct > 1 ? "text-red-300/95" : "text-zinc-500"}`}>
+            Variance: {variancePct.toFixed(2)}%
+            {variancePct > 1 ? " (blocked)" : ""}
+          </p>
+        ) : null}
+
+        {calcResult.ok ? (
+          <p className="mt-3 text-xs text-zinc-500">
+            Formula: lot size = risk / (SL pips × pip/point value per lot in account currency).
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-6 flex justify-end">
