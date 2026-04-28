@@ -9,6 +9,6 @@
     "skipLibCheck": true,
     "outDir": ".tmp-tests"
   },
-  "include": ["lib/lot-size.ts", "lib/lot-size.test.ts"]
+  "include": ["lib/lot-size.ts", "lib/exchange-rates.ts", "lib/*.test.ts"]
 }
 

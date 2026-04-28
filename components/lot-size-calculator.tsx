@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { AppSelect, type AppSelectOption } from "@/components/AppSelect";
-import { calculateLotSizeFromRiskAmount, calculateRiskAmount, parseLotSizeSymbol } from "@/lib/lot-size";
+import { ASSET_CLASSES, calculatePositionSize, calculateRiskAmount, getPresetSpec, type AccountCurrency, type AssetClass, type PositionSizeLabel, type PresetId } from "@/lib/lot-size";
+import { getExchangeRate, isExchangeRateRequired } from "@/lib/exchange-rates";
 import { useArden24SessionDraft } from "@/lib/hooks/useArden24SessionDraft";
 import {
   ARDEN24_LOT_SIZE_DRAFT_KEY,
@@ -15,19 +16,31 @@ const CURRENCIES = [
   { value: "EUR", symbol: "€", label: "EUR" },
 ] as const;
 
-const LOT_MARKET_OPTIONS: AppSelectOption<string>[] = [
-  { value: "", label: "Select market type" },
-  { value: "Forex", label: "Forex" },
-  { value: "Stocks", label: "Stocks" },
-  { value: "Indices", label: "Indices" },
-  { value: "Commodities", label: "Commodities" },
-  { value: "Cryptocurrencies", label: "Cryptocurrencies" },
-  { value: "Bonds", label: "Bonds" },
-  { value: "Futures", label: "Futures" },
-  { value: "Options", label: "Options" },
-  { value: "ETFs", label: "ETFs" },
-  { value: "CFDs", label: "CFDs" },
-];
+const ASSET_CLASS_OPTIONS: AppSelectOption<AssetClass>[] = ASSET_CLASSES.map((v) => ({
+  value: v,
+  label:
+    v === "forex"
+      ? "Forex"
+      : v === "stock"
+        ? "Stock"
+        : v === "etf"
+          ? "ETF"
+          : v === "index"
+            ? "Index"
+            : v === "commodity"
+              ? "Commodity"
+              : v === "crypto"
+                ? "Crypto"
+                : v === "bond"
+                  ? "Bond"
+                  : v === "future"
+                    ? "Future"
+                    : v === "option"
+                      ? "Option"
+                      : v === "cfd"
+                        ? "CFD"
+                        : "Custom",
+}));
 
 const ACCOUNT_CURRENCY_OPTIONS: AppSelectOption<"GBP" | "USD" | "EUR">[] =
   CURRENCIES.map((c) => ({
@@ -37,28 +50,71 @@ const ACCOUNT_CURRENCY_OPTIONS: AppSelectOption<"GBP" | "USD" | "EUR">[] =
 
 type RiskInputMode = "percent" | "amount";
 
+type CalcMode = "simple" | "advanced";
+
 type LotCalcSessionState = {
-  market: string;
-  accountCurrency: "GBP" | "USD" | "EUR";
+  mode: CalcMode;
+  presetId: PresetId;
+  accountCurrency: AccountCurrency;
   accountSize: number;
   riskInputMode: RiskInputMode;
   riskPercent: number;
   riskAmountInput: number;
-  asset: string;
-  stopLossPips: number;
-  quoteToAccountRate: number;
+
+  // Shared / advanced specs
+  assetClass: AssetClass;
+  symbol: string;
+  instrumentCurrency: string;
+  tickValueCurrency: string;
+  contractSize: number;
+  tickSize: number;
+  tickValue: number;
+  positionStep: number;
+  minPositionSize: number;
+  maxPositionSize: number;
+
+  // Inputs
+  stopDistance: number;
+  exchangeRate: number;
+  exchangeRateMode: "manual" | "auto";
+
+  // Margin feasibility (optional)
+  currentPrice: number;
+  leverage: number;
+  availableMargin: number;
+
+  confirmedSpecs: boolean;
 };
 
 const LOT_CALC_INITIAL: LotCalcSessionState = {
-  market: "",
+  mode: "simple",
+  presetId: "EURUSD",
   accountCurrency: "GBP",
   accountSize: 10000,
   riskInputMode: "percent",
   riskPercent: 1,
   riskAmountInput: 100,
-  asset: "EURUSD",
-  stopLossPips: 20,
-  quoteToAccountRate: 1,
+
+  assetClass: "forex",
+  symbol: "EURUSD",
+  instrumentCurrency: "USD",
+  tickValueCurrency: "USD",
+  contractSize: 100000,
+  tickSize: 1,
+  tickValue: 10,
+  positionStep: 0.01,
+  minPositionSize: 0.01,
+  maxPositionSize: 100,
+
+  stopDistance: 20,
+  exchangeRate: 1,
+  exchangeRateMode: "manual",
+
+  currentPrice: 0,
+  leverage: 0,
+  availableMargin: 0,
+
+  confirmedSpecs: false,
 };
 
 type LotSizeCalculatorProps = {
@@ -77,20 +133,35 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
   );
 
   const {
-    market,
+    mode,
+    presetId,
     accountCurrency,
     accountSize,
     riskInputMode,
     riskPercent,
     riskAmountInput,
-    asset,
-    stopLossPips,
-    quoteToAccountRate,
+    assetClass,
+    symbol,
+    instrumentCurrency,
+    tickValueCurrency,
+    contractSize,
+    tickSize,
+    tickValue,
+    positionStep,
+    minPositionSize,
+    maxPositionSize,
+    stopDistance,
+    exchangeRate,
+    exchangeRateMode,
+    currentPrice,
+    leverage,
+    availableMargin,
+    confirmedSpecs,
   } = calc;
 
   const currency = CURRENCIES.find((c) => c.value === accountCurrency) ?? CURRENCIES[0];
 
-  const assetOptions: AppSelectOption<string>[] = useMemo(
+  const presetOptions: AppSelectOption<PresetId>[] = useMemo(
     () => [
       { value: "EURUSD", label: "EURUSD" },
       { value: "GBPUSD", label: "GBPUSD" },
@@ -98,6 +169,18 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
       { value: "USDJPY", label: "USDJPY" },
       { value: "EURJPY", label: "EURJPY" },
       { value: "XAUUSD", label: "XAUUSD" },
+      { value: "NAS100", label: "NAS100" },
+      { value: "US30", label: "US30" },
+      { value: "SPX500", label: "SPX500" },
+      { value: "UK100", label: "UK100" },
+      { value: "GER40", label: "GER40" },
+      { value: "USOIL", label: "USOIL" },
+      { value: "BTCUSD", label: "BTCUSD" },
+      { value: "ETHUSD", label: "ETHUSD" },
+      { value: "AAPL", label: "AAPL" },
+      { value: "TSLA", label: "TSLA" },
+      { value: "SPY", label: "SPY" },
+      { value: "TLT", label: "TLT" },
     ],
     [],
   );
@@ -114,29 +197,99 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
     [riskAmount, accountSize]
   );
 
-  const symbolInfo = useMemo(() => parseLotSizeSymbol(asset), [asset]);
-  const quoteCurrency = symbolInfo.kind === "unknown" ? null : symbolInfo.quote;
-  const needsFx = quoteCurrency != null && quoteCurrency !== accountCurrency;
+  const resolvedSpec = useMemo(() => {
+    if (mode === "simple") {
+      return getPresetSpec(presetId, accountCurrency);
+    }
+    return {
+      assetClass,
+      symbol: symbol.trim().toUpperCase() || "CUSTOM",
+      accountCurrency,
+      instrumentCurrency: instrumentCurrency.trim().toUpperCase() || accountCurrency,
+      tickValueCurrency: tickValueCurrency.trim().toUpperCase() || accountCurrency,
+      contractSize,
+      tickSize,
+      tickValue,
+      positionStep,
+      minPositionSize,
+      maxPositionSize,
+      stopDistanceUnit: "custom" as const,
+      outputLabel: "position_size" as PositionSizeLabel,
+    };
+  }, [
+    mode,
+    presetId,
+    accountCurrency,
+    assetClass,
+    symbol,
+    instrumentCurrency,
+    tickValueCurrency,
+    contractSize,
+    tickSize,
+    tickValue,
+    positionStep,
+    minPositionSize,
+    maxPositionSize,
+  ]);
+
+  const exchangeRateRequired = isExchangeRateRequired(
+    resolvedSpec.tickValueCurrency,
+    resolvedSpec.accountCurrency
+  );
+  const estimatedExchangeRate = exchangeRateRequired
+    ? getExchangeRate(resolvedSpec.tickValueCurrency, resolvedSpec.accountCurrency)
+    : 1;
 
   const calcResult = useMemo(() => {
-    return calculateLotSizeFromRiskAmount({
-      symbol: asset,
-      accountCurrency,
+    return calculatePositionSize({
+      spec: resolvedSpec,
       riskAmount,
-      stopLossPips,
-      quoteToAccountRate,
+      stopDistance,
+      exchangeRate: exchangeRateRequired ? exchangeRate : 1,
+      currentPrice: currentPrice > 0 ? currentPrice : undefined,
+      leverage: leverage > 0 ? leverage : undefined,
+      availableMargin: availableMargin > 0 ? availableMargin : undefined,
     });
-  }, [asset, accountCurrency, riskAmount, stopLossPips, quoteToAccountRate]);
+  }, [resolvedSpec, riskAmount, stopDistance, exchangeRateRequired, exchangeRate, currentPrice, leverage, availableMargin]);
 
+  const intendedRisk = riskAmount;
   const estimatedActualRisk = calcResult.ok
-    ? calcResult.estimatedActualRisk
-    : calcResult.estimatedActualRisk ?? null;
+    ? calcResult.actualRisk
+    : calcResult.debug?.actualRisk ?? null;
 
-  const variancePct = calcResult.ok
-    ? calcResult.varianceRatio * 100
-    : calcResult.varianceRatio != null
+  const variancePct =
+    calcResult.ok
       ? calcResult.varianceRatio * 100
-      : null;
+      : calcResult.debug?.varianceRatio != null
+        ? calcResult.debug.varianceRatio * 100
+        : null;
+
+  const suggestedPositionSize = calcResult.ok ? calcResult.roundedPositionSize : null;
+
+  const outputLabel = useMemo(() => {
+    const l = resolvedSpec.outputLabel;
+    if (l === "lot_size") return "Suggested lot size";
+    if (l === "shares_units") return "Suggested shares/units";
+    if (l === "contracts") return "Suggested contracts";
+    if (l === "units") return "Suggested units";
+    return "Suggested position size";
+  }, [resolvedSpec.outputLabel]);
+
+  const stopLabel = useMemo(() => {
+    if (mode === "simple") {
+      if (resolvedSpec.assetClass === "forex") return "Stop loss (pips)";
+      if (resolvedSpec.assetClass === "stock" || resolvedSpec.assetClass === "etf") return `Stop loss (${currency.symbol} per share)`;
+      if (resolvedSpec.assetClass === "index") return "Stop loss (points)";
+      if (resolvedSpec.assetClass === "commodity") return "Stop loss (points / price move)";
+      if (resolvedSpec.assetClass === "crypto") return "Stop loss (price move)";
+      if (resolvedSpec.assetClass === "future") return "Stop loss (ticks / points)";
+      if (resolvedSpec.assetClass === "option") return "Stop loss (premium move)";
+      if (resolvedSpec.assetClass === "cfd") return "Stop loss (points / pips)";
+      return "Stop loss distance";
+    }
+    // Advanced mode: user-defined (show generic).
+    return "Stop loss distance";
+  }, [mode, resolvedSpec.assetClass, currency.symbol]);
 
   function handleReset() {
     resetCalc();
@@ -168,23 +321,35 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
   return (
     <div className={shellClass}>
       {!embedded ? (
-        <h2 className="mb-4 text-2xl font-semibold text-white">Lot Size Calculator</h2>
+        <h2 className="mb-4 text-2xl font-semibold text-white">Position Size Calculator</h2>
       ) : null}
 
       <div className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/95">
-        <p className="font-semibold">Risk calculator under audit.</p>
-        <p className="mt-1 text-xs text-amber-100/90">
-          Always confirm lot size with your broker before placing a trade.
+        <p className="font-semibold">
+          Different brokers use different contract sizes, tick values, spreads, commissions and minimum trade sizes.
+          Confirm these settings with your broker before placing any trade.
         </p>
       </div>
 
-      <div className="mb-4">
-        <AppSelect
-          label="Market"
-          value={market}
-          onChange={(v) => setCalc((c) => ({ ...c, market: v }))}
-          options={LOT_MARKET_OPTIONS}
-        />
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setCalc((c) => ({ ...c, mode: "simple" }))}
+          className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
+            mode === "simple" ? "border-sky-400/60 bg-sky-500/20 text-sky-100" : "border-white/10 bg-black/30 text-zinc-300 hover:border-white/20"
+          }`}
+        >
+          Simple Mode
+        </button>
+        <button
+          type="button"
+          onClick={() => setCalc((c) => ({ ...c, mode: "advanced" }))}
+          className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
+            mode === "advanced" ? "border-sky-400/60 bg-sky-500/20 text-sky-100" : "border-white/10 bg-black/30 text-zinc-300 hover:border-white/20"
+          }`}
+        >
+          Advanced Broker Specs Mode
+        </button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -239,40 +404,204 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
           )}
         </div>
 
-        <AppSelect
-          label="Asset"
-          value={asset}
-          onChange={(v) => setCalc((c) => ({ ...c, asset: v }))}
-          options={assetOptions}
-        />
+        {mode === "simple" ? (
+          <AppSelect<PresetId>
+            label="Instrument preset"
+            value={presetId}
+            onChange={(v) => {
+              const spec = getPresetSpec(v, accountCurrency);
+              setCalc((c) => ({
+                ...c,
+                presetId: v,
+                assetClass: spec.assetClass,
+                symbol: spec.symbol,
+                instrumentCurrency: String(spec.instrumentCurrency),
+                tickValueCurrency: String(spec.tickValueCurrency),
+                contractSize: spec.contractSize,
+                tickSize: spec.tickSize,
+                tickValue: spec.tickValue,
+                positionStep: spec.positionStep,
+                minPositionSize: spec.minPositionSize,
+                maxPositionSize: spec.maxPositionSize,
+                exchangeRateMode: "manual",
+                confirmedSpecs: false,
+              }));
+            }}
+            options={presetOptions}
+          />
+        ) : (
+          <AppSelect<AssetClass>
+            label="Asset class"
+            value={assetClass}
+            onChange={(v) => setCalc((c) => ({ ...c, assetClass: v }))}
+            options={ASSET_CLASS_OPTIONS}
+          />
+        )}
 
         <label className="flex flex-col gap-2">
-          <span className={labelClass}>Stop Loss (pips)</span>
+          <span className={labelClass}>{stopLabel}</span>
           <input
             type="number"
             step="0.1"
-            value={stopLossPips}
-            onChange={(e) => setCalc((c) => ({ ...c, stopLossPips: Number(e.target.value) }))}
+            value={stopDistance}
+            onChange={(e) => setCalc((c) => ({ ...c, stopDistance: Number(e.target.value) }))}
             className={inputClass}
           />
         </label>
 
-        {needsFx ? (
+        {exchangeRateRequired ? (
           <label className="flex flex-col gap-2 md:col-span-2">
-            <span className={labelClass}>
-              FX rate ({quoteCurrency} → {accountCurrency})
-            </span>
+            <span className={labelClass}>Exchange rate ({resolvedSpec.tickValueCurrency} → {accountCurrency})</span>
+            <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-100/95">
+              Exchange rate required: {resolvedSpec.tickValueCurrency} → {accountCurrency}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (estimatedExchangeRate == null) return;
+                  setCalc((c) => ({
+                    ...c,
+                    exchangeRate: estimatedExchangeRate,
+                    exchangeRateMode: "auto",
+                  }));
+                }}
+                className="rounded-lg border border-sky-400/50 bg-sky-500/20 px-3 py-1.5 text-xs font-semibold text-sky-100 hover:bg-sky-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={estimatedExchangeRate == null}
+              >
+                Auto-fill rate
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalc((c) => ({ ...c, exchangeRateMode: "manual" }))}
+                className="rounded-lg border border-white/20 bg-black/30 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:border-white/35"
+              >
+                Manual override
+              </button>
+            </div>
             <input
               type="number"
               step="0.0001"
-              value={quoteToAccountRate}
-              onChange={(e) => setCalc((c) => ({ ...c, quoteToAccountRate: Number(e.target.value) }))}
+              value={exchangeRate}
+              onChange={(e) =>
+                setCalc((c) => ({
+                  ...c,
+                  exchangeRate: Number(e.target.value),
+                  exchangeRateMode: "manual",
+                }))
+              }
               className={inputClass}
             />
+            {estimatedExchangeRate != null ? (
+              <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-zinc-300">
+                <p>
+                  Estimated rate: <span className="font-semibold text-white">{estimatedExchangeRate}</span>
+                </p>
+                <p className="mt-1 text-zinc-500">Last checked: static fallback</p>
+                <p className="mt-1 text-zinc-500">Confirm with your broker before placing a trade.</p>
+                <p className="mt-1 text-zinc-500">Mode: {exchangeRateMode === "auto" ? "Auto-filled (editable)" : "Manual override"}</p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100/95">
+                No estimated rate available. Enter your broker’s conversion rate manually.
+              </div>
+            )}
             <p className="text-xs text-zinc-500">
-              Required to convert pip/point value into your account currency.
+              Exchange rates vary by broker, spread and execution time. Use your broker’s rate for final confirmation.
             </p>
           </label>
+        ) : null}
+
+        {mode === "advanced" ? (
+          <div className="grid gap-4 md:col-span-2 md:grid-cols-2">
+            <label className="flex flex-col gap-2">
+              <span className={labelClass}>Symbol</span>
+              <input
+                type="text"
+                value={symbol}
+                onChange={(e) => setCalc((c) => ({ ...c, symbol: e.target.value }))}
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className={labelClass}>Instrument currency</span>
+              <input
+                type="text"
+                value={instrumentCurrency}
+                onChange={(e) => setCalc((c) => ({ ...c, instrumentCurrency: e.target.value }))}
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className={labelClass}>Tick value currency</span>
+              <input
+                type="text"
+                value={tickValueCurrency}
+                onChange={(e) => setCalc((c) => ({ ...c, tickValueCurrency: e.target.value }))}
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className={labelClass}>Contract size</span>
+              <input
+                type="number"
+                step="any"
+                value={contractSize}
+                onChange={(e) => setCalc((c) => ({ ...c, contractSize: Number(e.target.value) }))}
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className={labelClass}>Tick size</span>
+              <input
+                type="number"
+                step="any"
+                value={tickSize}
+                onChange={(e) => setCalc((c) => ({ ...c, tickSize: Number(e.target.value) }))}
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className={labelClass}>Tick value</span>
+              <input
+                type="number"
+                step="any"
+                value={tickValue}
+                onChange={(e) => setCalc((c) => ({ ...c, tickValue: Number(e.target.value) }))}
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className={labelClass}>Position step</span>
+              <input
+                type="number"
+                step="any"
+                value={positionStep}
+                onChange={(e) => setCalc((c) => ({ ...c, positionStep: Number(e.target.value) }))}
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className={labelClass}>Min position size</span>
+              <input
+                type="number"
+                step="any"
+                value={minPositionSize}
+                onChange={(e) => setCalc((c) => ({ ...c, minPositionSize: Number(e.target.value) }))}
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className={labelClass}>Max position size</span>
+              <input
+                type="number"
+                step="any"
+                value={maxPositionSize}
+                onChange={(e) => setCalc((c) => ({ ...c, maxPositionSize: Number(e.target.value) }))}
+                className={inputClass}
+              />
+            </label>
+          </div>
         ) : null}
       </div>
 
@@ -288,13 +617,17 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
         </div>
 
         <div className="rounded-xl bg-zinc-800 p-4">
-          <p className="text-sm text-zinc-400">Suggested lot size</p>
+          <p className="text-sm text-zinc-400">{outputLabel}</p>
           <p className="text-2xl font-bold text-sky-400">
-            {calcResult.ok ? calcResult.lotSize : "—"}
+            {calcResult.ok && confirmedSpecs ? calcResult.roundedPositionSize : "—"}
           </p>
           {!calcResult.ok ? (
             <p className="mt-2 text-xs font-medium text-red-300/95">
               {calcResult.reason}
+            </p>
+          ) : !confirmedSpecs ? (
+            <p className="mt-2 text-xs font-medium text-amber-200/95">
+              Tick the confirmation below to reveal the suggested position size.
             </p>
           ) : null}
         </div>
@@ -307,7 +640,7 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
             <p className="text-xs text-zinc-500">Intended risk</p>
             <p className="mt-1 font-semibold text-white">
               {currency.symbol}
-              {riskAmount.toFixed(2)}
+              {intendedRisk.toFixed(2)}
             </p>
           </div>
           <div>
@@ -327,8 +660,78 @@ export default function LotSizeCalculator({ embedded = false }: LotSizeCalculato
 
         {calcResult.ok ? (
           <p className="mt-3 text-xs text-zinc-500">
-            Formula: lot size = risk / (SL pips × pip/point value per lot in account currency).
+            Core formula: riskPerUnit = (stopDistance / tickSize) × tickValue(account currency). Position size = risk / riskPerUnit.
           </p>
+        ) : null}
+      </div>
+
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+        <label className="flex items-start gap-3 text-sm text-zinc-200">
+          <input
+            type="checkbox"
+            checked={confirmedSpecs}
+            onChange={(e) => setCalc((c) => ({ ...c, confirmedSpecs: e.target.checked }))}
+            className="mt-1 h-4 w-4 rounded border-white/20 bg-zinc-900"
+          />
+          <span>
+            <span className="font-semibold text-white">
+              I have checked these instrument specifications against my broker.
+            </span>
+            <span className="mt-1 block text-xs text-zinc-500">
+              Until you confirm, the suggested position size is hidden as a safety measure.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Margin check (optional)</p>
+        <div className="mt-3 grid gap-4 md:grid-cols-3">
+          <label className="flex flex-col gap-2">
+            <span className={labelClass}>Current price</span>
+            <input
+              type="number"
+              step="any"
+              value={currentPrice}
+              onChange={(e) => setCalc((c) => ({ ...c, currentPrice: Number(e.target.value) }))}
+              className={inputClass}
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className={labelClass}>Leverage (e.g. 100 for 1:100)</span>
+            <input
+              type="number"
+              step="any"
+              value={leverage}
+              onChange={(e) => setCalc((c) => ({ ...c, leverage: Number(e.target.value) }))}
+              className={inputClass}
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className={labelClass}>Available margin ({currency.symbol})</span>
+            <input
+              type="number"
+              step="any"
+              value={availableMargin}
+              onChange={(e) => setCalc((c) => ({ ...c, availableMargin: Number(e.target.value) }))}
+              className={inputClass}
+            />
+          </label>
+        </div>
+
+        {calcResult.ok && calcResult.margin ? (
+          <div className="mt-4 rounded-xl border border-white/10 bg-black/30 p-3 text-sm">
+            <p className="text-xs text-zinc-500">Margin required</p>
+            <p className="mt-1 font-semibold text-white">
+              {currency.symbol}
+              {calcResult.margin.marginRequiredAccountCurrency.toFixed(2)}
+            </p>
+            {calcResult.margin.status === "insufficient" ? (
+              <p className="mt-2 text-xs font-semibold text-red-300/95">
+                Trade may not be possible — insufficient margin at current leverage.
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
